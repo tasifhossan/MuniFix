@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -12,7 +12,6 @@ import {
   Building,
   ShieldCheck,
   ArrowRight,
-  Info,
   ChevronRight,
   Sparkles
 } from "lucide-react";
@@ -34,7 +33,6 @@ export default function RegisterPage() {
     agreeTerms: false
   });
 
-  const [passwordStrength, setPasswordStrength] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -45,14 +43,7 @@ export default function RegisterPage() {
     { label: "Contains special character", val: /[^A-Za-z0-9]/.test(formData.password) }
   ];
 
-  useEffect(() => {
-    let score = 0;
-    if (formData.password.length >= 8) score++;
-    if (/\D*\d/.test(formData.password)) score++;
-    if (/[A-Z]/.test(formData.password)) score++;
-    if (/[^A-Za-z0-9]/.test(formData.password)) score++;
-    setPasswordStrength(score);
-  }, [formData.password]);
+  const passwordStrength = requirements.filter((req) => req.val).length;
 
   const wards = [
     { value: 1, label: "Ward 1 - South Pahartali" },

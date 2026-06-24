@@ -2,14 +2,15 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Search, Bell, Menu, X, Globe, Mail, Phone } from "lucide-react";
+import { Search, Bell, Menu, X } from "lucide-react";
 
 interface NavbarProps {
   activeNav?: string;
   onNavClick?: (section: string) => void;
+  isDashboard?: boolean;
 }
 
-export default function Navbar({ activeNav = "how-it-works", onNavClick }: NavbarProps) {
+export default function Navbar({ activeNav = "how-it-works", onNavClick, isDashboard = false }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,6 +41,19 @@ export default function Navbar({ activeNav = "how-it-works", onNavClick }: Navba
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex space-x-8 text-sm font-medium">
+          <Link
+            href="/complaints/new"
+            className={`transition-all duration-200 py-2 relative ${
+              activeNav === "new-report"
+                ? "text-brand-teal font-extrabold"
+                : "text-gray-500 hover:text-brand-teal"
+            }`}
+          >
+            New Report
+            {activeNav === "new-report" && (
+              <span className="absolute bottom-0 left-0 w-full h-[2px] bg-brand-teal rounded-full" />
+            )}
+          </Link>
           <a
             href="#how-it-works"
             onClick={() => handleNavClick("how-it-works")}
@@ -146,18 +160,30 @@ export default function Navbar({ activeNav = "how-it-works", onNavClick }: Navba
           </div>
 
           {/* Auth Buttons */}
-          <Link
-            href="/login"
-            className="text-sm font-semibold text-gray-700 hover:text-brand-teal transition-all duration-200"
-          >
-            Login
-          </Link>
-          <Link
-            href="/register"
-            className="bg-brand-teal text-white text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-brand-teal-hover transition-all duration-300 shadow-md shadow-brand-teal/10 hover:shadow-brand-teal/20 transform hover:-translate-y-0.5"
-          >
-            Register
-          </Link>
+          {isDashboard ? (
+            <Link href="/settings" className="relative block shrink-0">
+              <img
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop"
+                className="w-8 h-8 rounded-full border border-gray-200 hover:border-brand-teal transition-all duration-200"
+                alt="User Profile"
+              />
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-sm font-semibold text-gray-700 hover:text-brand-teal transition-all duration-200"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="bg-brand-teal text-white text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-brand-teal-hover transition-all duration-300 shadow-md shadow-brand-teal/10 hover:shadow-brand-teal/20 transform hover:-translate-y-0.5"
+              >
+                Register
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -181,21 +207,40 @@ export default function Navbar({ activeNav = "how-it-works", onNavClick }: Navba
       {/* Mobile Notification Popdown (Overlay-less) */}
       {mobileMenuOpen && (
         <div className="md:hidden border-b border-gray-100 bg-white px-4 pt-2 pb-6 space-y-3 shadow-inner">
-          <Link
-            href="/login"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block w-full text-center py-2.5 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50"
-          >
-            Login
-          </Link>
-          <Link
-            href="/register"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block w-full text-center py-2.5 bg-brand-teal text-white font-medium rounded-xl hover:bg-brand-teal-hover"
-          >
-            Register
-          </Link>
+          {isDashboard ? (
+            <Link
+              href="/settings"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block w-full text-center py-2.5 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50"
+            >
+              My Profile
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block w-full text-center py-2.5 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block w-full text-center py-2.5 bg-brand-teal text-white font-medium rounded-xl hover:bg-brand-teal-hover"
+              >
+                Register
+              </Link>
+            </>
+          )}
           <div className="border-t border-gray-100 my-2 pt-2">
+            <Link
+              href="/complaints/new"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block py-2 text-gray-600 hover:text-brand-teal font-medium text-sm"
+            >
+              New Report
+            </Link>
             <a
               href="#how-it-works"
               onClick={() => {
