@@ -54,13 +54,13 @@ export default function NotFound() {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16 w-full max-w-md">
-          <Link href="/" passHref legacyBehavior>
+          <Link href="/" className="w-full sm:w-auto">
             <Button variant="primary" className="flex items-center gap-2 w-full sm:w-auto shadow-md">
               <Home className="w-4 h-4" />
               Return to Homepage
             </Button>
           </Link>
-          <Link href="/report-bug" passHref legacyBehavior>
+          <Link href="/report-bug" className="w-full sm:w-auto">
             <Button variant="outline" className="flex items-center gap-2 w-full sm:w-auto shadow-sm">
               <Bug className="w-4 h-4" />
               Report a Bug
