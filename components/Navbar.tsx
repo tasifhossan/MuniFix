@@ -2,15 +2,20 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Search, Bell, Menu, X } from "lucide-react";
+import Image from "next/image";
+import { Search, Bell, Menu, X, Globe, Mail, Phone } from "lucide-react";
 
 interface NavbarProps {
   activeNav?: string;
   onNavClick?: (section: string) => void;
   isDashboard?: boolean;
+  user?: {
+    name: string;
+    avatar: string;
+  };
 }
 
-export default function Navbar({ activeNav = "how-it-works", onNavClick, isDashboard = false }: NavbarProps) {
+export default function Navbar({ activeNav = "how-it-works", onNavClick, isDashboard = false, user }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,69 +38,67 @@ export default function Navbar({ activeNav = "how-it-works", onNavClick, isDashb
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <span className="text-2xl font-extrabold tracking-tight text-brand-teal transition-colors duration-200 hover:text-brand-teal-light">
-            MuniFix Ctg
+        <Link href="/" className="flex items-center space-x-1">
+          <span className="text-2xl font-black tracking-tight text-brand-teal">
+            MuniFix
+          </span>
+          <span className="text-2xl font-black tracking-tight text-slate-800">
+            Ctg
           </span>
         </Link>
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex space-x-8 text-sm font-medium">
-          <Link
-            href="/complaints/new"
-            className={`transition-all duration-200 py-2 relative ${
-              activeNav === "new-report"
-                ? "text-brand-teal font-extrabold"
-                : "text-gray-500 hover:text-brand-teal"
-            }`}
-          >
-            New Report
-            {activeNav === "new-report" && (
-              <span className="absolute bottom-0 left-0 w-full h-[2px] bg-brand-teal rounded-full" />
-            )}
-          </Link>
-          <a
-            href="#how-it-works"
-            onClick={() => handleNavClick("how-it-works")}
-            className={`transition-all duration-200 py-2 relative ${
-              activeNav === "how-it-works"
-                ? "text-brand-teal font-semibold"
-                : "text-gray-500 hover:text-brand-teal"
-            }`}
-          >
-            How it Works
-            {activeNav === "how-it-works" && (
-              <span className="absolute bottom-0 left-0 w-full h-[2px] bg-brand-teal rounded-full" />
-            )}
-          </a>
-          <a
-            href="#about"
-            onClick={() => handleNavClick("about")}
-            className={`transition-all duration-200 py-2 relative ${
-              activeNav === "about"
-                ? "text-brand-teal font-semibold"
-                : "text-gray-500 hover:text-brand-teal"
-            }`}
-          >
-            About
-            {activeNav === "about" && (
-              <span className="absolute bottom-0 left-0 w-full h-[2px] bg-brand-teal rounded-full" />
-            )}
-          </a>
-          <a
-            href="#contact"
-            onClick={() => handleNavClick("contact")}
-            className={`transition-all duration-200 py-2 relative ${
-              activeNav === "contact"
-                ? "text-brand-teal font-semibold"
-                : "text-gray-500 hover:text-brand-teal"
-            }`}
-          >
-            Contact
-            {activeNav === "contact" && (
-              <span className="absolute bottom-0 left-0 w-full h-[2px] bg-brand-teal rounded-full" />
-            )}
-          </a>
+          {(user || isDashboard) && (
+            <Link
+              href="/complaints/new"
+              className={`transition-all duration-200 py-2 relative ${
+                activeNav === "new-report"
+                  ? "text-brand-teal font-extrabold"
+                  : "text-gray-500 hover:text-brand-teal"
+              }`}
+            >
+              New Report
+              {activeNav === "new-report" && (
+                <span className="absolute bottom-0 left-0 w-full h-[2px] bg-brand-teal rounded-full" />
+              )}
+            </Link>
+          )}
+          {(user || isDashboard
+            ? [
+                { id: "how-it-works", label: "How it Works", href: "/#how-it-works" },
+                { id: "about", label: "About", href: "/#about" },
+              ]
+            : [
+                { id: "how-it-works", label: "How it Works", href: "#how-it-works" },
+                { id: "about", label: "About", href: "#about" },
+                { id: "contact", label: "Contact", href: "#contact" },
+              ]
+          ).map((item) => {
+            const isActive = activeNav === item.id;
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                onClick={(e) => {
+                  if (!(user || isDashboard) && onNavClick) {
+                    e.preventDefault();
+                    handleNavClick(item.id);
+                  }
+                }}
+                className={`transition-all duration-200 py-2 relative ${
+                  isActive
+                    ? "text-brand-teal font-semibold"
+                    : "text-gray-500 hover:text-brand-teal"
+                }`}
+              >
+                {item.label}
+                {isActive && (
+                  <span className="absolute bottom-0 left-3 right-3 h-[3px] bg-brand-teal rounded-full" />
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Right Action Icons & Buttons */}
@@ -159,8 +162,25 @@ export default function Navbar({ activeNav = "how-it-works", onNavClick, isDashb
             )}
           </div>
 
-          {/* Auth Buttons */}
-          {isDashboard ? (
+          {/* User Profile or Auth Buttons */}
+          {user ? (
+            <>
+              <div className="w-[1px] h-6 bg-gray-200" />
+              <div className="flex items-center space-x-3 cursor-pointer">
+                <div className="relative w-9 h-9 rounded-full overflow-hidden border border-gray-100">
+                  <Image
+                    src={user.avatar}
+                    alt={user.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <span className="text-sm font-bold text-gray-800 hover:text-brand-teal transition-colors">
+                  {user.name}
+                </span>
+              </div>
+            </>
+          ) : isDashboard ? (
             <Link href="/settings" className="relative block shrink-0">
               <img
                 src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop"
@@ -204,10 +224,25 @@ export default function Navbar({ activeNav = "how-it-works", onNavClick, isDashb
         </div>
       </div>
 
-      {/* Mobile Notification Popdown (Overlay-less) */}
+      {/* Mobile Menu Popdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-gray-100 bg-white px-4 pt-2 pb-6 space-y-3 shadow-inner">
-          {isDashboard ? (
+        <div className="md:hidden border-b border-gray-100 bg-white px-4 pt-4 pb-6 space-y-3 shadow-inner">
+          {user ? (
+            <div className="flex items-center space-x-3 pb-3 border-b border-gray-100 mb-2">
+              <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-100">
+                <Image
+                  src={user.avatar}
+                  alt={user.name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-800">{user.name}</p>
+                <p className="text-xs text-gray-400">Citizen</p>
+              </div>
+            </div>
+          ) : isDashboard ? (
             <Link
               href="/settings"
               onClick={() => setMobileMenuOpen(false)}
@@ -233,44 +268,41 @@ export default function Navbar({ activeNav = "how-it-works", onNavClick, isDashb
               </Link>
             </>
           )}
-          <div className="border-t border-gray-100 my-2 pt-2">
-            <Link
-              href="/complaints/new"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 text-gray-600 hover:text-brand-teal font-medium text-sm"
-            >
-              New Report
-            </Link>
-            <a
-              href="#how-it-works"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                handleNavClick("how-it-works");
-              }}
-              className="block py-2 text-gray-600 hover:text-brand-teal font-medium text-sm"
-            >
-              How it Works
-            </a>
-            <a
-              href="#about"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                handleNavClick("about");
-              }}
-              className="block py-2 text-gray-600 hover:text-brand-teal font-medium text-sm"
-            >
-              About
-            </a>
-            <a
-              href="#contact"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                handleNavClick("contact");
-              }}
-              className="block py-2 text-gray-600 hover:text-brand-teal font-medium text-sm"
-            >
-              Contact
-            </a>
+          <div className={`${!(user || isDashboard) ? "border-t border-gray-100 my-2 pt-2" : ""}`}>
+            {(user || isDashboard) && (
+              <Link
+                href="/complaints/new"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 text-gray-600 hover:text-brand-teal font-medium text-sm"
+              >
+                New Report
+              </Link>
+            )}
+            {(user || isDashboard
+              ? [
+                  { id: "how-it-works", label: "How it Works", href: "/#how-it-works" },
+                  { id: "about", label: "About", href: "/#about" },
+                ]
+              : [
+                  { id: "how-it-works", label: "How it Works", href: "#how-it-works" },
+                  { id: "about", label: "About", href: "#about" },
+                  { id: "contact", label: "Contact", href: "#contact" },
+                ]
+            ).map((item) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (!(user || isDashboard) && onNavClick) {
+                    onNavClick(item.id);
+                  }
+                }}
+                className="block py-2.5 text-gray-600 hover:text-brand-teal font-medium text-sm"
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
         </div>
       )}
