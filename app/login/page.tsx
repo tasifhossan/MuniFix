@@ -3,21 +3,19 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import {
-  Mail,
+  User,
   Lock,
-  ArrowRight,
+  LogIn,
   ShieldCheck,
   ChevronRight,
-  Activity
+  Landmark
 } from "lucide-react";
-import AuthLayout from "@/components/AuthLayout";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
 
 export default function LoginPage() {
-  const [role, setRole] = useState<"citizen" | "official">("citizen");
   const [formData, setFormData] = useState({
-    email: "",
+    emailOrUsername: "",
     password: "",
     rememberMe: false
   });
@@ -42,149 +40,165 @@ export default function LoginPage() {
     }, 1500);
   };
 
-  // Right column visual sidebar extra content
-  const sidebarExtraContent = (
-    <div className="bg-teal-900/30 border border-teal-850 p-6 rounded-2xl space-y-4 max-w-sm backdrop-blur-sm">
-      <h4 className="text-xs font-bold uppercase tracking-wider text-brand-teal-light">Platform Status</h4>
-      <div className="flex justify-between text-sm">
-        <span className="text-teal-200/80">Wards Active:</span>
-        <span className="font-bold text-white">41 / 41</span>
-      </div>
-      <div className="flex justify-between text-sm">
-        <span className="text-teal-200/80">Active Reports:</span>
-        <span className="font-bold text-white flex items-center">
-          <Activity className="w-3.5 h-3.5 mr-1 text-brand-orange animate-pulse" /> 184 Resolved today
-        </span>
-      </div>
-    </div>
-  );
+  const isFormValid = formData.emailOrUsername && formData.password;
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
-        <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl border border-gray-100 text-center space-y-6 animate-fade-in">
-          <div className="w-20 h-20 bg-brand-cyan-bg rounded-full flex items-center justify-center text-brand-cyan-text mx-auto shadow-md">
-            <ShieldCheck className="w-10 h-10" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-gray-900">Signed In Successfully!</h2>
-            <p className="text-gray-500 text-sm">
-              Redirecting you to the MuniFix Ctg dashboard...
+      <div className="min-h-screen flex flex-col items-center justify-between bg-[#f8fafc]/40 py-12 px-4 relative overflow-hidden font-sans">
+        {/* Ambient blurred backdrop shapes */}
+        <div className="absolute top-[-10%] left-[-15%] w-[450px] sm:w-[500px] h-[450px] sm:h-[500px] bg-teal-100/30 rounded-full blur-[100px] sm:blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-15%] w-[550px] sm:w-[600px] h-[550px] sm:h-[600px] bg-amber-100/25 rounded-full blur-[120px] sm:blur-[150px] pointer-events-none" />
+
+        {/* Content Container */}
+        <div className="w-full max-w-lg z-10 flex flex-col items-center my-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <span className="text-3xl font-black text-brand-teal tracking-tight block mb-1">
+              MuniFix Ctg
+            </span>
+            <p className="text-gray-500 text-sm font-medium">
+              Join Chattogram's digital civic platform
             </p>
           </div>
 
-          <div className="pt-2">
-            <Link href="/" className="w-full block">
-              <Button variant="primary" className="w-full py-3.5">
-                Go to Home Screen
-                <ChevronRight className="w-4 h-4 ml-1.5" />
-              </Button>
-            </Link>
+          {/* Success Card */}
+          <div className="w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl border border-slate-100/80 text-center space-y-6 animate-fade-in">
+            <div className="w-20 h-20 bg-teal-50 text-brand-teal rounded-full flex items-center justify-center mx-auto shadow-md">
+              <ShieldCheck className="w-10 h-10" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-gray-900">Signed In Successfully!</h2>
+              <p className="text-gray-500 text-sm font-medium">
+                Welcome back! Redirecting you to the MuniFix Ctg dashboard...
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <Link href="/" className="w-full block">
+                <Button variant="primary" className="w-full py-3.5 flex items-center justify-center gap-2">
+                  Go to Home Screen
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
+
+        {/* Footer */}
+        <footer className="w-full max-w-md text-center mt-12 z-10 text-xs text-gray-400 font-semibold uppercase tracking-widest">
+          Powered by CCC Digital Division
+        </footer>
       </div>
     );
   }
 
   return (
-    <AuthLayout
-      sidebarTitle="Monitor Municipal Fixes in Real-Time"
-      sidebarSubtitle="Log in to review progress on your submitted complaints, upvote local reports, or dispatch work orders."
-      sidebarBadge="Welcome Back"
-      sidebarExtra={sidebarExtraContent}
-    >
-      <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl shadow-slate-100 border border-gray-100/60 relative">
-        {/* Header */}
-        <div className="space-y-2 mb-8">
-          <h3 className="text-2xl font-black text-gray-900 tracking-tight">Sign In</h3>
-          <p className="text-sm text-gray-500">
-            New to MuniFix Ctg?{" "}
-            <Link href="/register" className="text-brand-teal font-bold hover:underline">
-              Create an account
-            </Link>
-          </p>
+    <div className="min-h-screen flex flex-col justify-between bg-[#f8fafc]/40 py-12 px-4 pt-28 md:pt-12 relative overflow-hidden font-sans">
+      {/* Ambient blurred backdrop shapes */}
+      <div className="absolute top-[-10%] left-[-15%] w-[450px] sm:w-[500px] h-[450px] sm:h-[500px] bg-teal-100/30 rounded-full blur-[100px] sm:blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-15%] w-[550px] sm:w-[600px] h-[550px] sm:h-[600px] bg-amber-100/25 rounded-full blur-[120px] sm:blur-[150px] pointer-events-none" />
+
+      {/* Top Left Logo */}
+      <div className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center space-x-2.5 z-10">
+        <div className="w-9 h-9 bg-brand-teal text-white rounded-xl flex items-center justify-center shadow-md shadow-brand-teal/15">
+          <Landmark className="w-5 h-5 fill-current" />
         </div>
-
-        {/* Role switcher */}
-        <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-xl mb-6">
-          <button
-            onClick={() => setRole("citizen")}
-            className={`py-2 text-center text-sm font-semibold rounded-lg transition-all duration-200 ${
-              role === "citizen"
-                ? "bg-white text-brand-teal shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Citizen Login
-          </button>
-          <button
-            onClick={() => setRole("official")}
-            className={`py-2 text-center text-sm font-semibold rounded-lg transition-all duration-200 ${
-              role === "official"
-                ? "bg-white text-brand-teal shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Official Login
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <Input
-            label="Email Address"
-            name="email"
-            type="email"
-            required
-            placeholder="name@example.com"
-            value={formData.email}
-            onChange={handleInputChange}
-            icon={<Mail className="w-4 h-4" />}
-          />
-
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Password</label>
-              <Link href="/forgot-password" className="text-xs text-brand-teal font-bold hover:underline">
-                Forgot Password?
-              </Link>
-            </div>
-            <Input
-              name="password"
-              type="password"
-              required
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={handleInputChange}
-              icon={<Lock className="w-4 h-4" />}
-            />
-          </div>
-
-          {/* Remember Me Checkbox */}
-          <label className="flex items-center space-x-2 text-xs text-gray-500 cursor-pointer pt-1">
-            <input
-              type="checkbox"
-              name="rememberMe"
-              checked={formData.rememberMe}
-              onChange={handleInputChange}
-              className="rounded border-gray-300 text-brand-teal focus:ring-brand-teal"
-            />
-            <span className="font-semibold select-none">Remember my device</span>
-          </label>
-
-          {/* Submit Button */}
-          <div className="pt-2">
-            <Button
-              type="submit"
-              loading={loading}
-              disabled={!formData.email || !formData.password}
-              className="w-full py-4 text-sm font-semibold rounded-xl"
-            >
-              Sign In <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </form>
+        <span className="text-xl font-extrabold tracking-tight text-brand-teal select-none">
+          MuniFix Ctg
+        </span>
       </div>
-    </AuthLayout>
+
+      {/* Content Container */}
+      <div className="w-full max-w-[450px] mx-auto z-10 flex flex-col items-center my-auto">
+        {/* Form Card */}
+        <div className="w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl border border-slate-100/80">
+          <div className="text-center space-y-1.5 mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome Back</h2>
+            <p className="text-gray-500 text-xs sm:text-sm font-semibold max-w-[280px] mx-auto leading-relaxed">
+              Access your municipal portal to manage complaints
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <Input
+              label="Email or Username"
+              name="emailOrUsername"
+              required
+              placeholder="Enter your credentials"
+              value={formData.emailOrUsername}
+              onChange={handleInputChange}
+              icon={<User className="w-4.5 h-4.5" />}
+            />
+
+            <div className="space-y-1.5 w-full">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
+                  Password
+                </label>
+                <Link href="/forgot-password" className="text-xs text-brand-teal font-bold hover:underline">
+                  Forgot Password?
+                </Link>
+              </div>
+              <Input
+                name="password"
+                type="password"
+                required
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleInputChange}
+                icon={<Lock className="w-4.5 h-4.5" />}
+              />
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <label className="flex items-center space-x-2 text-xs text-gray-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                name="rememberMe"
+                checked={formData.rememberMe}
+                onChange={handleInputChange}
+                className="rounded border-gray-305 text-brand-teal focus:ring-brand-teal w-4 h-4"
+              />
+              <span className="font-semibold">Remember Me</span>
+            </label>
+
+            {/* Submit Button */}
+            <div className="pt-2">
+              <Button
+                type="submit"
+                loading={loading}
+                disabled={!isFormValid}
+                className="w-full py-4 text-sm font-semibold rounded-xl flex items-center justify-center gap-2"
+              >
+                Sign In
+                <LogIn className="w-4.5 h-4.5" />
+              </Button>
+            </div>
+          </form>
+
+          {/* Portal Access Divider */}
+          <div className="relative flex py-5 items-center">
+            <div className="flex-grow border-t border-slate-100"></div>
+            <span className="flex-shrink mx-4 text-gray-400 text-[10px] font-bold tracking-widest uppercase">
+              Portal Access
+            </span>
+            <div className="flex-grow border-t border-slate-100"></div>
+          </div>
+
+          {/* Register Link */}
+          <div className="text-center mt-2 text-xs text-gray-500 font-semibold leading-normal">
+            Don't have an account?{" "}
+            <Link href="/register" className="text-brand-teal font-bold hover:underline ml-1">
+              Register as a Citizen
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Powered By Footer */}
+      <footer className="w-full max-w-md text-center mx-auto mt-12 z-10 text-[9.5px] text-gray-400 font-bold uppercase tracking-widest select-none">
+        Powered by CCC Digital Division
+      </footer>
+    </div>
   );
 }
