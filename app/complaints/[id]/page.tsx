@@ -1,29 +1,129 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Share, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Share, AlertTriangle, CheckCircle2, Loader2, Trash2, Edit3 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import Badge from "@/components/Badge";
 import ComplaintMetrics from "@/components/ComplaintMetrics";
 import Timeline from "@/components/Timeline";
-import { initialComplaints } from "@/lib/mockData";
+import { fetchComplaintById, updateComplaintStatus, deleteComplaint, getActiveProfile } from "@/lib/api";
 
 export default function ComplaintDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [complaint, setComplaint] = useState<any>(null);
+  const [assignment, setAssignment] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeProfile, setActiveProfile] = useState<any>(null);
+
+  // Status update form states
+  const [newStatus, setNewStatus] = useState("");
+  const [updateNotes, setUpdateNotes] = useState("");
+  const [selectedWorkerId, setSelectedWorkerId] = useState("b2569e5d-16a8-4c22-b1e1-88f1c3272e7c");
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const id = params?.id as string;
-  const complaint = initialComplaints.find((c) => c.id === id);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
     }, 3000);
+  };
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetchComplaintById(id);
+      if (res.success) {
+        const c = res.complaint;
+        const mapped = {
+          id: c.id,
+          title: c.category + " Issue - " + (c.citizen_name || "Citizen Report"),
+          description: c.description,
+          priority: c.priority === "critical" || c.priority === "high" ? "CRITICAL" : c.priority === "low" ? "LOW" : "MEDIUM",
+          status: c.status === "assigned" ? "Dispatched" : c.status === "in_progress" ? "In Progress" : c.status === "resolved" ? "Resolved" : "Pending Approval",
+          location: c.latitude && c.longitude ? `${c.latitude}, ${c.longitude}` : "Chattogram City",
+          time: `Reported on ${new Date(c.created_at).toLocaleDateString()} • ${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+          image: c.image_url || "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop",
+          category: c.category,
+          date: c.created_at,
+          reporter: c.citizen_name,
+          original: c
+        };
+        setComplaint(mapped);
+        setAssignment(res.assignment);
+        setHistory(res.history);
+        setNewStatus(c.status);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("munifix_active_profile");
+      if (stored) {
+        try {
+          setActiveProfile(JSON.parse(stored));
+        } catch (e) {}
+      } else {
+        setActiveProfile({
+          id: "f19d2bba-ea7f-4422-b5e1-55c3272e276b",
+          name: "John Citizen (Citizen)",
+          role: "citizen",
+          email: "john@gmail.com"
+        });
+      }
+    }
+  }, [id]);
+
+  const handleUpdateStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStatus) return;
+    try {
+      setIsUpdatingStatus(true);
+      const payload: any = { status: newStatus, notes: updateNotes };
+      if (newStatus === "assigned") {
+        payload.worker_id = selectedWorkerId;
+      }
+      const res = await updateComplaintStatus(id, payload);
+      if (res.success) {
+        triggerToast("Complaint progress updated successfully!");
+        setUpdateNotes("");
+        loadData();
+      }
+    } catch (err: any) {
+      triggerToast(`Failed to update: ${err.message}`);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this complaint?")) return;
+    try {
+      setIsDeleting(true);
+      const res = await deleteComplaint(id);
+      if (res.success) {
+        router.push("/complaints");
+      }
+    } catch (err: any) {
+      triggerToast(`Failed to delete: ${err.message}`);
+      setIsDeleting(false);
+    }
   };
 
   const handleShare = () => {
@@ -51,7 +151,24 @@ export default function ComplaintDetailsPage() {
     }
   };
 
-  if (!complaint) {
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
+        <Navbar activeNav="complaints" isDashboard />
+        <div className="flex flex-col md:flex-row flex-1 max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 gap-8">
+          <div className="hidden md:block">
+            <Sidebar />
+          </div>
+          <main className="flex-1 flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 text-brand-teal animate-spin" />
+            <p className="text-gray-500 text-sm font-bold mt-4 animate-pulse">Loading complaint details...</p>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !complaint) {
     return (
       <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
         <Navbar activeNav="complaints" isDashboard />
@@ -64,7 +181,7 @@ export default function ComplaintDetailsPage() {
               <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4 stroke-[1.5]" />
               <h3 className="text-lg font-bold text-gray-900">Complaint Not Found</h3>
               <p className="text-gray-500 text-sm mt-2 leading-relaxed">
-                We couldn't find a report with ID <span className="font-bold text-gray-800">"{id}"</span>. It may have been removed or does not exist.
+                {error || `We couldn't find a report with ID "${id}".`}
               </p>
               <Link href="/complaints">
                 <button className="mt-6 bg-brand-teal hover:bg-brand-teal-hover text-white text-xs font-bold px-6 py-3 rounded-xl transition-all shadow-md cursor-pointer">
@@ -141,6 +258,16 @@ export default function ComplaintDetailsPage() {
 
               {/* Action buttons (Share & Export) */}
               <div className="flex items-center gap-3 shrink-0 print:hidden">
+                {activeProfile && (activeProfile.role === "super_admin" || activeProfile.id === complaint.original?.citizen_id) && (
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-sm active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500 stroke-[2.5]" />
+                    <span>Delete</span>
+                  </button>
+                )}
                 <button
                   onClick={handleShare}
                   className="flex items-center gap-2 border border-gray-200 hover:border-gray-300 text-gray-700 bg-white px-4.5 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-sm active:scale-[0.98] cursor-pointer"
@@ -204,17 +331,17 @@ export default function ComplaintDetailsPage() {
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                     Assigned to:
                   </span>
-                  {complaint.assignedTo ? (
+                  {assignment ? (
                     <div className="flex items-center space-x-2">
                       <div className="w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 text-xxs font-black flex items-center justify-center border border-emerald-100 uppercase shrink-0">
-                        {complaint.assignedTo.avatar || "W"}
+                        {assignment.worker_name ? assignment.worker_name[0] : "W"}
                       </div>
                       <span className="text-xs font-bold text-gray-800">
-                        {complaint.assignedTo.name}
+                        {assignment.worker_name}
                       </span>
                     </div>
                   ) : (
-                    <span className="text-xs font-bold text-gray-450 italic">
+                    <span className="text-xs font-bold text-gray-400 italic">
                       Pending Assignment
                     </span>
                   )}
@@ -247,10 +374,87 @@ export default function ComplaintDetailsPage() {
 
           </div>
 
+          {/* Admin / Dept Admin operations panel */}
+          {activeProfile && (activeProfile.role === "dept_admin" || activeProfile.role === "super_admin") && (
+            <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm space-y-4">
+              <div className="flex items-center space-x-2 text-brand-teal">
+                <Edit3 className="w-5 h-5 stroke-[2.5]" />
+                <h3 className="text-base sm:text-lg font-extrabold tracking-tight">Admin Action Console</h3>
+              </div>
+              <form onSubmit={handleUpdateStatus} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Update Status</label>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-teal bg-white font-semibold text-gray-800"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+                {newStatus === "assigned" && (
+                  <div className="space-y-1.5 animate-fade-in">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Assign Field Worker</label>
+                    <select
+                      value={selectedWorkerId}
+                      onChange={(e) => setSelectedWorkerId(e.target.value)}
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-teal bg-white font-semibold text-gray-800"
+                    >
+                      <option value="b2569e5d-16a8-4c22-b1e1-88f1c3272e7c">Rahim Worker (Waste Dept)</option>
+                    </select>
+                  </div>
+                )}
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Transition Notes</label>
+                  <input
+                    type="text"
+                    placeholder="Provide details about status update or assignment..."
+                    value={updateNotes}
+                    onChange={(e) => setUpdateNotes(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-teal bg-white font-semibold text-gray-800"
+                  />
+                </div>
+                <div>
+                  <button
+                    type="submit"
+                    disabled={isUpdatingStatus}
+                    className="w-full bg-brand-teal hover:bg-brand-teal-hover text-white text-xs font-bold py-3.5 px-6 rounded-xl transition-all shadow-md active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                  >
+                    {isUpdatingStatus ? "Updating..." : "Update Progress"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
           {/* Timeline resolution progress */}
-          {complaint.timeline && (
+          {history.length > 0 && (
             <div className="w-full print:break-inside-avoid">
-              <Timeline steps={complaint.timeline} />
+              <Timeline steps={
+                history.map((h, index) => {
+                  const isLast = index === history.length - 1;
+                  let title = "Report Filed";
+                  if (h.new_status === "assigned") title = "Agency Dispatched";
+                  else if (h.new_status === "in_progress") title = "Work Started";
+                  else if (h.new_status === "resolved") title = "Issue Resolved";
+                  else if (h.new_status === "cancelled") title = "Report Cancelled";
+
+                  return {
+                    title,
+                    status: h.new_status === "assigned" ? "Assigned" : h.new_status === "in_progress" ? "In Progress" : h.new_status === "resolved" ? "Resolved" : h.new_status === "cancelled" ? "Cancelled" : "Pending",
+                    description: h.notes || `Complaint status changed to ${h.new_status}.`,
+                    time: new Date(h.changed_at).toLocaleDateString() + " • " + new Date(h.changed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    completed: true,
+                    current: isLast,
+                    bubbleText: h.new_status === "in_progress" ? h.notes : undefined,
+                    bubbleImages: []
+                  };
+                })
+              } />
             </div>
           )}
 

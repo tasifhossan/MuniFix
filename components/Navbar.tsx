@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Search, Bell, Menu, X } from "lucide-react";
+import { Search, Bell, Menu, X, ChevronDown } from "lucide-react";
+import { getActiveProfile, setActiveProfile, profiles, ActiveProfile } from "@/lib/api";
 
 interface NavbarProps {
   activeNav?: string;
@@ -15,6 +16,17 @@ export default function Navbar({ activeNav = "how-it-works", onNavClick, isDashb
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [activeProfile, setActiveProfileState] = useState<ActiveProfile>(getActiveProfile());
+
+  const handleProfileChange = (profile: ActiveProfile) => {
+    setActiveProfile(profile);
+    setActiveProfileState(profile);
+    setProfileDropdownOpen(false);
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
+  };
 
   // Mock live notifications for MuniFix Ctg
   const notifications = [
@@ -159,31 +171,39 @@ export default function Navbar({ activeNav = "how-it-works", onNavClick, isDashb
             )}
           </div>
 
-          {/* Auth Buttons */}
-          {isDashboard ? (
-            <Link href="/settings" className="relative block shrink-0">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop"
-                className="w-8 h-8 rounded-full border border-gray-200 hover:border-brand-teal transition-all duration-200"
-                alt="User Profile"
-              />
-            </Link>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="text-sm font-semibold text-gray-700 hover:text-brand-teal transition-all duration-200"
-              >
-                Login
-              </Link>
-              <Link
-                href="/register"
-                className="bg-brand-teal text-white text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-brand-teal-hover transition-all duration-300 shadow-md shadow-brand-teal/10 hover:shadow-brand-teal/20 transform hover:-translate-y-0.5"
-              >
-                Register
-              </Link>
-            </>
-          )}
+          {/* Active Testing Profile Switcher */}
+          <div className="relative">
+            <button
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="flex items-center space-x-2 border border-teal-100 hover:border-brand-teal bg-teal-50/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-gray-700 select-none cursor-pointer"
+            >
+              <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
+              <span>{activeProfile.name}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-gray-400 stroke-[2.5px]" />
+            </button>
+
+            {profileDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-150 rounded-2xl shadow-xl z-50 p-2 animate-fade-in animate-duration-150">
+                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-3.5 py-1.5 border-b border-gray-100 mb-1">
+                  Select User Context
+                </div>
+                {profiles.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleProfileChange(p)}
+                    className={`w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between ${
+                      activeProfile.id === p.id ? "bg-teal-50/70 text-brand-teal font-bold" : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span>{p.name}</span>
+                    {activeProfile.id === p.id && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Mobile Menu Button */}
