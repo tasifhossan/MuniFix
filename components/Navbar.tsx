@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Bell, Menu, X, Globe, Mail, Phone } from "lucide-react";
+import { Search, Bell, Menu, X, ChevronDown, Globe, Mail, Phone } from "lucide-react";
+import { getActiveProfile, setActiveProfile, profiles, ActiveProfile } from "@/lib/api";
 
 interface NavbarProps {
   activeNav?: string;
@@ -20,6 +21,17 @@ export default function Navbar({ activeNav = "how-it-works", onNavClick, isDashb
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [activeProfile, setActiveProfileState] = useState<ActiveProfile>(getActiveProfile());
+
+  const handleProfileChange = (profile: ActiveProfile) => {
+    setActiveProfile(profile);
+    setActiveProfileState(profile);
+    setProfileDropdownOpen(false);
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
+  };
 
   // Mock live notifications for MuniFix Ctg
   const notifications = [
@@ -158,6 +170,40 @@ export default function Navbar({ activeNav = "how-it-works", onNavClick, isDashb
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Active Testing Profile Switcher */}
+          <div className="relative">
+            <button
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="flex items-center space-x-2 border border-teal-100 hover:border-brand-teal bg-teal-50/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-gray-700 select-none cursor-pointer"
+            >
+              <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
+              <span>{activeProfile.name}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-gray-400 stroke-[2.5px]" />
+            </button>
+
+            {profileDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-150 rounded-2xl shadow-xl z-50 p-2 animate-fade-in animate-duration-150">
+                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-3.5 py-1.5 border-b border-gray-100 mb-1">
+                  Select User Context
+                </div>
+                {profiles.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleProfileChange(p)}
+                    className={`w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between ${
+                      activeProfile.id === p.id ? "bg-teal-50/70 text-brand-teal font-bold" : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span>{p.name}</span>
+                    {activeProfile.id === p.id && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
+                    )}
+                  </button>
+                ))}
               </div>
             )}
           </div>

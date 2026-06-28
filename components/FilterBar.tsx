@@ -111,7 +111,7 @@ export default function FilterBar({ onSearch, onFilterChange, onClearAll }: Filt
               <button
                 key={opt.value}
                 onClick={() => handleSelectFilter(name, opt.value)}
-                className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-750 hover:bg-gray-50 rounded-xl transition-colors text-left"
+                className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-xl transition-colors text-left"
               >
                 <span>{opt.label}</span>
                 {selectedValue === opt.value && (
@@ -137,8 +137,12 @@ export default function FilterBar({ onSearch, onFilterChange, onClearAll }: Filt
             type="text"
             placeholder="Search complaints by description or location..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-brand-teal bg-white transition-all text-gray-800 placeholder-gray-450"
+            onChange={(e) => {
+              const val = e.target.value;
+              setSearchQuery(val);
+              onSearch(val);
+            }}
+            className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-brand-teal bg-white transition-all text-gray-800 placeholder-gray-400"
           />
           {searchQuery && (
             <button
