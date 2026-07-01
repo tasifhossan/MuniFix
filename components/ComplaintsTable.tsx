@@ -1,62 +1,38 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, MoreHorizontal, Edit, CheckCircle } from "lucide-react";
 
-interface ComplaintItem {
-  id: string;
-  title: string;
-  subtitle: string;
+export interface ComplaintItem {
+  id: string; // e.g. "CTG-8821"
+  category: string; // e.g. "Road Maintenance"
+  citizenName: string;
+  citizenInitials: string;
+  citizenBg: string; // e.g. bg-[#e0e7ff] text-[#4f46e5]
   priority: "Critical" | "High" | "Medium" | "Low";
-  category: string;
-  reported: string;
-  location: string;
+  status: "Pending" | "In Progress" | "Assigned" | "Assigned (Purple)";
+  dateReported: string; // e.g. "Oct 14, 2024"
+  thumbnail: string; // e.g. "/pothole.png"
 }
 
 interface ComplaintsTableProps {
   items: ComplaintItem[];
-  selectedIds: string[];
-  onSelectionChange: (ids: string[]) => void;
   totalCount?: number;
-  onAssignClick?: (item: ComplaintItem) => void;
+  currentPage?: number;
+  onPageChange?: (page: number) => void;
+  onActionClick?: (item: ComplaintItem) => void;
 }
 
 export default function ComplaintsTable({
   items,
-  selectedIds,
-  onSelectionChange,
-  totalCount = 28,
-  onAssignClick,
+  totalCount = 245,
+  currentPage = 1,
+  onPageChange,
+  onActionClick,
 }: ComplaintsTableProps) {
   
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      onSelectionChange(items.map((item) => item.id));
-    } else {
-      onSelectionChange([]);
-    }
-  };
-
-  const handleSelectRow = (id: string, checked: boolean) => {
-    if (checked) {
-      onSelectionChange([...selectedIds, id]);
-    } else {
-      onSelectionChange(selectedIds.filter((rowId) => rowId !== id));
-    }
-  };
-
-  const isAllSelected = items.length > 0 && selectedIds.length === items.length;
-  const isPartiallySelected = selectedIds.length > 0 && selectedIds.length < items.length;
-
-  // Custom priority badge helper
-  const renderPriorityBadge = (priority: ComplaintItem["priority"]) => {
-    const styles = {
-      Critical: "bg-red-50 text-red-600 border-red-100",
-      High: "bg-amber-50 text-amber-600 border-amber-100",
-      Medium: "bg-teal-50 text-teal-600 border-teal-100",
-      Low: "bg-slate-50 text-slate-500 border-slate-200",
-    };
-
+  // Custom Priority Badge with dot
+  const renderPriority = (priority: ComplaintItem["priority"]) => {
     const dotColors = {
       Critical: "bg-red-500",
       High: "bg-amber-500",
@@ -64,150 +40,190 @@ export default function ComplaintsTable({
       Low: "bg-slate-400",
     };
 
+    const textColors = {
+      Critical: "text-red-600",
+      High: "text-amber-600",
+      Medium: "text-teal-600",
+      Low: "text-slate-500",
+    };
+
     return (
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border select-none ${styles[priority]}`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${dotColors[priority]}`} />
+      <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${textColors[priority]} select-none`}>
+        <span className={`w-2 h-2 rounded-full ${dotColors[priority]}`} />
         {priority}
       </span>
     );
   };
 
-  // Custom category badge helper
-  const renderCategoryBadge = (category: string) => {
-    const isWater = category.toLowerCase().includes("water");
-    const styleClass = isWater
-      ? "bg-blue-50 text-blue-700 border-blue-100/50"
-      : "bg-slate-100/80 text-slate-700 border-slate-200/50";
-    return (
-      <span className={`inline-block px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider border select-none ${styleClass}`}>
-        {category}
-      </span>
-    );
+  // Custom Premium Status Badges matching the screenshot
+  const renderStatus = (status: ComplaintItem["status"]) => {
+    switch (status) {
+      case "Pending":
+        return (
+          <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-extrabold text-[#e11d48] bg-[#ffe4e6] tracking-wide select-none leading-none">
+            PENDING
+          </span>
+        );
+      case "In Progress":
+        return (
+          <div className="relative inline-flex items-center justify-center w-24 h-8 bg-[#e0f2fe] rounded-full overflow-hidden select-none border border-sky-100">
+            {/* Custom half-oval/slanted shape on the right */}
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-sky-200/50 rounded-l-full transform translate-x-2" />
+            <div className="relative flex flex-col items-center justify-center text-[9px] font-black text-sky-850 leading-tight">
+              <span>IN</span>
+              <span>PROGRESS</span>
+            </div>
+          </div>
+        );
+      case "Assigned":
+        return (
+          <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-md text-xs font-extrabold text-white bg-[#005c55] tracking-wide select-none leading-none shadow-sm">
+            ASSIGNED
+          </span>
+        );
+      case "Assigned (Purple)":
+        return (
+          <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-extrabold text-[#4f46e5] bg-[#e0e7ff] tracking-wide select-none leading-none">
+            ASSIGNED
+          </span>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-150 shadow-sm overflow-hidden font-sans w-full">
+    <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden font-sans w-full">
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse table-auto min-w-[700px]">
+        <table className="w-full text-left border-collapse table-auto min-w-[800px]">
           {/* Table Header */}
-          <thead className="bg-[#f8fafc] border-b border-slate-100 select-none">
+          <thead className="bg-[#f8fafc] border-b border-slate-200/60 select-none">
             <tr>
-              <th className="py-4 pl-6 pr-4 w-12">
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  ref={(input) => {
-                    if (input) {
-                      input.indeterminate = isPartiallySelected;
-                    }
-                  }}
-                  onChange={handleSelectAll}
-                  className="w-4 h-4 rounded text-brand-teal focus:ring-brand-teal border-gray-300 cursor-pointer"
-                />
+              <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest w-28">
+                Thumbnail
               </th>
-              <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-36">
+              <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Complaint ID & Category
+              </th>
+              <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Citizen
+              </th>
+              <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 Priority
               </th>
-              <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                Complaint Details
+              <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Status
               </th>
-              <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-40">
-                Category
+              <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Date Reported
               </th>
-              <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">
-                Reported
+              <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24 text-right">
+                Actions
               </th>
-              <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest w-40">
-                Location
-              </th>
-              {onAssignClick && (
-                <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest w-24">
-                  Action
-                </th>
-              )}
             </tr>
           </thead>
 
-          {/* Table Rows */}
-          <tbody className="divide-y divide-slate-100">
-            {items.map((item) => {
-              const isSelected = selectedIds.includes(item.id);
-              return (
-                <tr
-                  key={item.id}
-                  className={`transition-colors duration-150 hover:bg-slate-50/50 ${
-                    isSelected ? "bg-brand-teal/[0.02]" : ""
-                  }`}
-                >
-                  <td className="py-4.5 pl-6 pr-4">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={(e) => handleSelectRow(item.id, e.target.checked)}
-                      className="w-4 h-4 rounded text-brand-teal focus:ring-brand-teal border-gray-300 cursor-pointer"
+          {/* Table Body */}
+          <tbody className="divide-y divide-slate-150/70">
+            {items.map((item) => (
+              <tr
+                key={item.id}
+                className="transition-colors duration-150 hover:bg-slate-50/40"
+              >
+                {/* Thumbnail */}
+                <td className="py-4.5 px-6">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-100 shadow-sm shrink-0 bg-slate-50">
+                    <img
+                      src={item.thumbnail}
+                      alt={item.category}
+                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
                     />
-                  </td>
-                  <td className="py-4.5 px-4 vertical-middle">
-                    {renderPriorityBadge(item.priority)}
-                  </td>
-                  <td className="py-4.5 px-4">
-                    <span className="text-sm font-bold text-slate-800 leading-tight block">
-                      {item.title}
+                  </div>
+                </td>
+
+                {/* Complaint ID & Category */}
+                <td className="py-4.5 px-6">
+                  <span className="text-sm font-extrabold text-slate-900 block leading-tight select-all">
+                    #{item.id}
+                  </span>
+                  <span className="text-xs text-slate-500 font-semibold block mt-1">
+                    {item.category}
+                  </span>
+                </td>
+
+                {/* Citizen */}
+                <td className="py-4.5 px-6 vertical-middle">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black select-none shrink-0 shadow-inner ${item.citizenBg}`}>
+                      {item.citizenInitials}
+                    </div>
+                    <span className="text-sm font-bold text-slate-805">
+                      {item.citizenName}
                     </span>
-                    <span className="text-xxs sm:text-xs text-gray-450 font-semibold leading-relaxed block mt-0.5 line-clamp-1">
-                      {item.subtitle}
-                    </span>
-                  </td>
-                  <td className="py-4.5 px-4 vertical-middle">
-                    {renderCategoryBadge(item.category)}
-                  </td>
-                  <td className="py-4.5 px-4 text-xs font-bold text-slate-500">
-                    {item.reported}
-                  </td>
-                  <td className="py-4.5 px-6 text-xs font-bold text-slate-500">
-                    {item.location}
-                  </td>
-                  {onAssignClick && (
-                    <td className="py-4.5 px-6 vertical-middle">
-                      <button
-                        onClick={() => onAssignClick(item)}
-                        className="text-brand-teal hover:underline font-bold text-xs cursor-pointer select-none active:scale-[0.98]"
-                      >
-                        Assign
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
+                  </div>
+                </td>
+
+                {/* Priority */}
+                <td className="py-4.5 px-6 vertical-middle">
+                  {renderPriority(item.priority)}
+                </td>
+
+                {/* Status */}
+                <td className="py-4.5 px-6 vertical-middle">
+                  {renderStatus(item.status)}
+                </td>
+
+                {/* Date Reported */}
+                <td className="py-4.5 px-6 text-sm font-bold text-slate-500 vertical-middle">
+                  {item.dateReported}
+                </td>
+
+                {/* Actions */}
+                <td className="py-4.5 px-6 text-right vertical-middle">
+                  <button
+                    onClick={() => onActionClick && onActionClick(item)}
+                    className="p-1.5 text-slate-400 hover:text-[#005c55] hover:bg-slate-50 rounded-lg transition-all cursor-pointer inline-flex active:scale-90"
+                    title="Actions"
+                  >
+                    <MoreHorizontal className="w-5 h-5" />
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
       {/* Pagination Footer */}
-      <div className="bg-[#f8fafc] border-t border-slate-100 px-6 py-4 flex items-center justify-between select-none">
+      <div className="bg-[#f8fafc] border-t border-slate-200/60 px-6 py-4.5 flex items-center justify-between select-none">
         <span className="text-xs font-bold text-slate-400">
-          Showing 1 to {items.length} of {totalCount} unassigned complaints
+          Showing 1-10 of {totalCount} complaints
         </span>
 
         {/* Page controls */}
-        <div className="flex items-center gap-1.5">
-          <button className="p-1 text-slate-450 hover:text-brand-teal hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0">
-            <ChevronLeft className="w-4.5 h-4.5" />
+        <div className="flex items-center gap-1">
+          <button className="p-1 text-slate-400 hover:text-[#005c55] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0">
+            <ChevronLeft className="w-5 h-5" />
           </button>
           
-          <button className="bg-brand-teal text-white rounded-lg px-2.5 py-1 text-xs font-bold cursor-pointer">
+          <button className="bg-[#005c55] text-white rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer shadow-sm shadow-[#005c55]/20">
             1
           </button>
-          <button className="text-slate-450 hover:text-brand-teal hover:bg-slate-100 rounded-lg px-2.5 py-1 text-xs font-bold cursor-pointer transition-colors">
+          <button className="text-slate-500 hover:text-[#005c55] hover:bg-slate-100 rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer transition-colors">
             2
           </button>
-          <button className="text-slate-450 hover:text-brand-teal hover:bg-slate-100 rounded-lg px-2.5 py-1 text-xs font-bold cursor-pointer transition-colors">
+          <button className="text-slate-500 hover:text-[#005c55] hover:bg-slate-100 rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer transition-colors">
             3
           </button>
+          
+          <span className="text-slate-405 text-xs font-bold px-1 select-none">...</span>
 
-          <button className="p-1 text-slate-450 hover:text-brand-teal hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0">
-            <ChevronRight className="w-4.5 h-4.5" />
+          <button className="text-slate-500 hover:text-[#005c55] hover:bg-slate-100 rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer transition-colors">
+            25
+          </button>
+
+          <button className="p-1 text-slate-400 hover:text-[#005c55] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0">
+            <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       </div>
