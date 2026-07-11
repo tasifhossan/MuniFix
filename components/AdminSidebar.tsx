@@ -5,14 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
   LayoutGrid, 
-  Users as UsersIcon,
   AlertTriangle, 
-  FileText, 
   Settings, 
   HelpCircle, 
   LogOut,
   Building,
-  Plus
+  Plus,
+  BarChart3,
+  ShieldCheck
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -21,6 +21,13 @@ interface AdminSidebarProps {
   newReportPlacement?: "top" | "bottom" | "hidden";
   settingsPlacement?: "top" | "bottom";
   role?: "admin" | "superadmin";
+  hideUsersAndDepartments?: boolean;
+  hideNewReport?: boolean;
+  hideDashboard?: boolean;
+  hidePermissions?: boolean;
+  hideComplaints?: boolean;
+  hideDepartments?: boolean;
+  hideReports?: boolean;
 }
 
 export default function AdminSidebar({ 
@@ -29,25 +36,46 @@ export default function AdminSidebar({
   newReportPlacement = "top",
   settingsPlacement = "bottom",
   role = "admin",
+  hideUsersAndDepartments = false,
+  hideNewReport = false,
+  hideDashboard = false,
+  hidePermissions = false,
+  hideComplaints = false,
+  hideDepartments = false,
+  hideReports = false,
 }: AdminSidebarProps) {
   const pathname = usePathname();
+  const effectiveNewReportPlacement = hideNewReport ? "hidden" : newReportPlacement;
   
   // Auto-detect active nav based on path if not explicitly provided
   const currentActive = activeNav || (
     pathname === "/admin" ? "dashboard" :
-    pathname?.includes("/admin/users") ? "users" :
+    pathname?.includes("/admin/permissions") ? "permissions" :
+    pathname?.includes("/admin/users") ? "permissions" :
     pathname?.includes("/admin/departments") ? "departments" :
     pathname?.includes("/admin/complaints") ? "complaints" :
+    pathname?.includes("/admin/reports") ? "reports" :
     pathname?.includes("/admin/settings") ? "settings" : "dashboard"
   );
 
   const baseItems = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className="w-5 h-5" />, href: "/admin" },
-    { id: "users", label: "Users", icon: <UsersIcon className="w-5 h-5" />, href: "/admin/users" },
+    { id: "permissions", label: "Permissions", icon: <ShieldCheck className="w-5 h-5" />, href: "/admin/permissions" },
     { id: "complaints", label: "Complaints", icon: <AlertTriangle className="w-5 h-5" />, href: "/admin/complaints" },
     { id: "departments", label: "Departments", icon: <Building className="w-5 h-5" />, href: "/admin/departments" },
-    { id: "reports", label: "Reports", icon: <FileText className="w-5 h-5" />, href: "#reports" },
-  ];
+    { id: "reports", label: "Reports", icon: <BarChart3 className="w-5 h-5" />, href: "/admin/reports" },
+  ].filter(item => {
+    if (hideDashboard && item.id === "dashboard") return false;
+    if (hidePermissions && item.id === "permissions") return false;
+    if (hideComplaints && item.id === "complaints") return false;
+    if (hideDepartments && item.id === "departments") return false;
+    if (hideReports && item.id === "reports") return false;
+
+    if (hideUsersAndDepartments && (item.id === "permissions" || item.id === "departments")) {
+      return false;
+    }
+    return true;
+  });
 
   // If settingsPlacement is "top", include it in the main menu list
   const menuItems = settingsPlacement === "top"
@@ -99,7 +127,7 @@ export default function AdminSidebar({
         </div>
 
         {/* New Report CTA button in Top Position */}
-        {newReportPlacement === "top" && (
+        {effectiveNewReportPlacement === "top" && (
           <div className="px-4 pt-2">
             {renderNewReportButton()}
           </div>
@@ -159,7 +187,7 @@ export default function AdminSidebar({
         )}
 
         {/* New Report CTA button in Bottom Position */}
-        {newReportPlacement === "bottom" && (
+        {effectiveNewReportPlacement === "bottom" && (
           <div className="pb-2">
             {renderNewReportButton()}
           </div>
