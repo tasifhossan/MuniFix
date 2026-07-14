@@ -10,7 +10,8 @@ import {
   PlusCircle, 
   HelpCircle, 
   LogOut,
-  Landmark
+  Landmark,
+  User
 } from "lucide-react";
 
 interface WorkerSidebarProps {
@@ -24,10 +25,11 @@ export default function WorkerSidebar({
 }: WorkerSidebarProps) {
   
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4.5 h-4.5" /> },
-    { id: "complaints", label: "Complaints", icon: <AlertTriangle className="w-4.5 h-4.5" /> },
-    { id: "reports", label: "Reports", icon: <BarChart3 className="w-4.5 h-4.5" /> },
-    { id: "settings", label: "Settings", icon: <Settings className="w-4.5 h-4.5" /> },
+    { id: "dashboard", label: "Dashboard", href: "/worker", icon: <LayoutDashboard className="w-4.5 h-4.5" /> },
+    { id: "complaints", label: "Complaints", href: "#", icon: <AlertTriangle className="w-4.5 h-4.5" /> },
+    { id: "reports", label: "Reports", href: "#", icon: <BarChart3 className="w-4.5 h-4.5" /> },
+    { id: "profile", label: "Profile", href: "/worker/profile", icon: <User className="w-4.5 h-4.5" /> },
+    { id: "settings", label: "Settings", href: "#", icon: <Settings className="w-4.5 h-4.5" /> },
   ];
 
   const handleNavClick = (id: string) => {
@@ -58,19 +60,34 @@ export default function WorkerSidebar({
         <nav className="space-y-1.5 flex-1">
           {menuItems.map((item) => {
             const isActive = activeNav === item.id;
+            const btnClass = `w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 select-none cursor-pointer active:scale-[0.98] ${
+              isActive
+                ? "bg-brand-teal text-white shadow-md shadow-brand-teal/10"
+                : "text-slate-500 hover:text-brand-teal hover:bg-slate-100/80"
+            }`;
+
+            if (item.href === "#") {
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={btnClass}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </button>
+              );
+            }
+
             return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 select-none cursor-pointer active:scale-[0.98] ${
-                  isActive
-                    ? "bg-brand-teal text-white shadow-md shadow-brand-teal/10"
-                    : "text-slate-500 hover:text-brand-teal hover:bg-slate-100/80"
-                }`}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </button>
+              <Link key={item.id} href={item.href} className="block">
+                <button
+                  className={btnClass}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </button>
+              </Link>
             );
           })}
         </nav>

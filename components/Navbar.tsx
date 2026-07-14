@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Search, Bell, Menu, X, Globe, Mail, Phone } from "lucide-react";
+import NotificationDropdown, { NotificationItem } from "./NotificationDropdown";
 
 interface NavbarProps {
   activeNav?: string;
@@ -25,12 +26,21 @@ export default function Navbar({
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Mock live notifications for MuniFix Ctg
-  const notifications = [
-    { id: 1, text: "Road repair on Ward 15 (Chawkbazar) completed", time: "5 mins ago", read: false },
-    { id: 2, text: "New waterlogging issue reported at GEC Circle", time: "1 hour ago", read: false },
-    { id: 3, text: "Waste management team dispatched to Agrabad", time: "2 hours ago", read: true },
-  ];
+  // Mock live notifications for MuniFix Ctg matching the screenshot
+  const [notifications, setNotifications] = useState<NotificationItem[]>([
+    { id: 1, text: "Your complaint #CTG-8821 has been assigned", type: "complaint", time: "2m ago", read: false },
+    { id: 2, text: "New task assigned in Agrabad", type: "task", time: "15m ago", read: false },
+    { id: 3, text: "Monthly report is ready for Chattogram Municipal", type: "report", time: "1h ago", read: true },
+  ]);
+
+  const handleMarkAllRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const handleViewAll = () => {
+    alert("Navigating to all notifications...");
+    setNotificationsOpen(false);
+  };
 
   const handleNavClick = (section: string) => {
     if (onNavClick) {
@@ -137,23 +147,12 @@ export default function Navbar({
             </button>
 
             {notificationsOpen && (
-              <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 p-4 transition-all animate-fade-in">
-                <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-3 select-none">
-                  <h3 className="text-sm font-semibold text-gray-800">Live Updates</h3>
-                  <span className="text-xs text-[#005c55] font-medium cursor-pointer hover:underline">Mark all read</span>
-                </div>
-                <div className="space-y-3">
-                  {notifications.map((notif) => (
-                    <div key={notif.id} className={`flex items-start space-x-2 text-xs p-2 rounded-lg transition-colors ${notif.read ? "bg-white" : "bg-teal-50/50"}`}>
-                      <div className={`w-2 h-2 rounded-full mt-1.5 ${notif.read ? "bg-gray-300" : "bg-[#005c55]"}`} />
-                      <div className="flex-1">
-                        <p className="text-gray-700">{notif.text}</p>
-                        <span className="text-[10px] text-gray-405 font-medium block mt-1">{notif.time}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <NotificationDropdown
+                notifications={notifications}
+                onMarkAllRead={handleMarkAllRead}
+                onViewAll={handleViewAll}
+                onClose={() => setNotificationsOpen(false)}
+              />
             )}
           </div>
 
