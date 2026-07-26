@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  AlertTriangle,
+  MessageSquareWarning,
   BarChart3,
   Settings,
   HelpCircle,
@@ -21,24 +21,20 @@ export default function Sidebar({ onItemSelect }: SidebarProps) {
 
   const mainNavItems = [
     { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { id: "complaints", label: "Complaints", href: "/dashboard/complaints", icon: AlertTriangle },
-    { id: "reports", label: "Reports", href: "/dashboard/reports", icon: BarChart3 },
-    { id: "settings", label: "Settings", href: "/dashboard/settings", icon: Settings },
+    { id: "complaints", label: "Complaints", href: "/complaints", icon: MessageSquareWarning },
+    { id: "reports", label: "Reports", href: "/reports", icon: BarChart3 },
+    { id: "settings", label: "Settings", href: "/settings", icon: Settings },
   ];
 
   const bottomNavItems = [
-    { id: "help", label: "Help Center", href: "/dashboard/help", icon: HelpCircle },
+    { id: "help", label: "Help Center", href: "/help", icon: HelpCircle },
     { id: "logout", label: "Logout", href: "/login", icon: LogOut },
   ];
 
   const renderLink = (item: { id: string; label: string; href: string; icon: React.ComponentType<any> }) => {
     const Icon = item.icon;
-    
-    // Check if the current route is active
-    // For dashboard root, match exactly; for others, check if it starts with the link href
-    const isActive = item.href === "/dashboard" 
-      ? pathname === "/dashboard" 
-      : pathname.startsWith(item.href);
+    // Highlight if pathname matches exactly, or starts with the href (excluding root /)
+    const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
     return (
       <Link
