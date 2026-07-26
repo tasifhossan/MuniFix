@@ -8,11 +8,11 @@ import NotificationDropdown, { NotificationItem } from "./NotificationDropdown";
 interface NavbarProps {
   activeNav?: string;
   onNavClick?: (section: string) => void;
+  isDashboard?: boolean;
   user?: {
     name: string;
     avatar: string;
   };
-  isDashboard?: boolean;
 }
 
 export default function Navbar({ 
@@ -60,48 +60,56 @@ export default function Navbar({
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex space-x-8 text-sm font-medium">
-          <a
-            href="#how-it-works"
-            onClick={() => handleNavClick("how-it-works")}
-            className={`transition-all duration-200 py-2 relative ${
-              activeNav === "how-it-works"
-                ? "text-[#005c55] font-semibold"
-                : "text-gray-505 hover:text-[#005c55]"
-            }`}
-          >
-            How it Works
-            {activeNav === "how-it-works" && (
-              <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#005c55] rounded-full" />
-            )}
-          </a>
-          <a
-            href="#about"
-            onClick={() => handleNavClick("about")}
-            className={`transition-all duration-200 py-2 relative ${
-              activeNav === "about"
-                ? "text-[#005c55] font-semibold"
-                : "text-gray-550 hover:text-[#005c55]"
-            }`}
-          >
-            About
-            {activeNav === "about" && (
-              <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#005c55] rounded-full" />
-            )}
-          </a>
-          <a
-            href="#contact"
-            onClick={() => handleNavClick("contact")}
-            className={`transition-all duration-200 py-2 relative ${
-              activeNav === "contact"
-                ? "text-[#005c55] font-semibold"
-                : "text-gray-550 hover:text-[#005c55]"
-            }`}
-          >
-            Contact
-            {activeNav === "contact" && (
-              <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#005c55] rounded-full" />
-            )}
-          </a>
+          {(user || isDashboard) && (
+            <Link
+              href="/complaints/new"
+              className={`transition-all duration-200 py-2 relative ${
+                activeNav === "new-report"
+                  ? "text-[#005c55] font-extrabold"
+                  : "text-gray-500 hover:text-[#005c55]"
+              }`}
+            >
+              New Report
+              {activeNav === "new-report" && (
+                <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#005c55] rounded-full" />
+              )}
+            </Link>
+          )}
+          {(user || isDashboard
+            ? [
+                { id: "how-it-works", label: "How it Works", href: "/#how-it-works" },
+                { id: "about", label: "About", href: "/#about" },
+              ]
+            : [
+                { id: "how-it-works", label: "How it Works", href: "#how-it-works" },
+                { id: "about", label: "About", href: "#about" },
+                { id: "contact", label: "Contact", href: "#contact" },
+              ]
+          ).map((item) => {
+            const isActive = activeNav === item.id;
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                onClick={(e) => {
+                  if (!(user || isDashboard) && onNavClick) {
+                    e.preventDefault();
+                    handleNavClick(item.id);
+                  }
+                }}
+                className={`transition-all duration-200 py-2 relative ${
+                  isActive
+                    ? "text-[#005c55] font-semibold"
+                    : "text-gray-500 hover:text-[#005c55]"
+                }`}
+              >
+                {item.label}
+                {isActive && (
+                  <span className="absolute bottom-0 left-3 right-3 h-[3px] bg-[#005c55] rounded-full" />
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Right Action Icons & Buttons */}
@@ -158,13 +166,29 @@ export default function Navbar({
 
           {/* Auth profile avatar (if logged in) or buttons */}
           {user ? (
-            <div className="relative w-10 h-10 rounded-full overflow-hidden border border-slate-200 shadow-sm shrink-0">
+            <>
+              <div className="w-[1px] h-6 bg-slate-200" />
+              <div className="flex items-center space-x-3 cursor-pointer">
+                <div className="relative w-9 h-9 rounded-full overflow-hidden border border-slate-200 shadow-sm shrink-0">
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <span className="text-sm font-bold text-slate-800 hover:text-[#005c55] transition-colors">
+                  {user.name}
+                </span>
+              </div>
+            </>
+          ) : isDashboard ? (
+            <Link href="/settings" className="relative block shrink-0">
               <img
-                src={user.avatar}
-                alt={user.name}
-                className="w-full h-full object-cover"
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop"
+                className="w-8 h-8 rounded-full border border-slate-200 hover:border-[#005c55] transition-all duration-200"
+                alt="User Profile"
               />
-            </div>
+            </Link>
           ) : (
             <>
               <Link
@@ -211,6 +235,14 @@ export default function Navbar({
               </div>
               <span className="text-sm font-bold text-slate-800">{user.name}</span>
             </div>
+          ) : isDashboard ? (
+            <Link
+              href="/settings"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block w-full text-center py-2.5 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50"
+            >
+              My Profile
+            </Link>
           ) : (
             <>
               <Link
@@ -229,37 +261,41 @@ export default function Navbar({
               </Link>
             </>
           )}
-          <div className="my-2 pt-2">
-            <a
-              href="#how-it-works"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                handleNavClick("how-it-works");
-              }}
-              className="block py-2 text-gray-650 hover:text-[#005c55] font-medium text-sm"
-            >
-              How it Works
-            </a>
-            <a
-              href="#about"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                handleNavClick("about");
-              }}
-              className="block py-2 text-gray-650 hover:text-[#005c55] font-medium text-sm"
-            >
-              About
-            </a>
-            <a
-              href="#contact"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                handleNavClick("contact");
-              }}
-              className="block py-2 text-gray-650 hover:text-[#005c55] font-medium text-sm"
-            >
-              Contact
-            </a>
+          <div className={`${!(user || isDashboard) ? "border-t border-slate-100 my-2 pt-2" : ""}`}>
+            {(user || isDashboard) && (
+              <Link
+                href="/complaints/new"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 text-slate-650 hover:text-[#005c55] font-medium text-sm"
+              >
+                New Report
+              </Link>
+            )}
+            {(user || isDashboard
+              ? [
+                  { id: "how-it-works", label: "How it Works", href: "/#how-it-works" },
+                  { id: "about", label: "About", href: "/#about" },
+                ]
+              : [
+                  { id: "how-it-works", label: "How it Works", href: "#how-it-works" },
+                  { id: "about", label: "About", href: "#about" },
+                  { id: "contact", label: "Contact", href: "#contact" },
+                ]
+            ).map((item) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (!(user || isDashboard) && onNavClick) {
+                    onNavClick(item.id);
+                  }
+                }}
+                className="block py-2.5 text-slate-650 hover:text-[#005c55] font-medium text-sm"
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
         </div>
       )}
