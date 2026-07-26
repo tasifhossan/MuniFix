@@ -1,18 +1,33 @@
 "use client";
 
 import React, { useState } from "react";
+import { createComplaint } from "@/lib/api";
 import Link from "next/link";
 import { MapPin, Navigation, Compass, Sparkles, AlertTriangle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import EvidenceUpload from "@/components/EvidenceUpload";
 import LiveAIAnalysis from "@/components/LiveAIAnalysis";
 import ReportingGuidelines from "@/components/ReportingGuidelines";
+import dynamic from "next/dynamic";
+
+const InteractiveMap = dynamic(() => import("@/components/InteractiveMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full min-h-[220px] bg-slate-100 rounded-3xl border border-gray-150 flex items-center justify-center animate-pulse">
+      <p className="text-gray-400 text-xs font-bold">Loading Map Engine...</p>
+    </div>
+  )
+});
 
 export default function NewComplaintPage() {
   const [description, setDescription] = useState("");
   const [locationInput, setLocationInput] = useState("");
   const [isLocating, setIsLocating] = useState(false);
   const [detectedArea, setDetectedArea] = useState("Chattogram, Bangladesh");
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,23 +42,84 @@ export default function NewComplaintPage() {
     }
   };
 
-  const handleUseCurrentLocation = () => {
-    setIsLocating(true);
-    setTimeout(() => {
-      setIsLocating(false);
-      setLocationInput("GEC Circle, East Gate, Chittogram");
-      setDetectedArea("Chowdhury Road, Ward 15, Chattogram");
-    }, 1200);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+
+  const handleSearchLocation = async (query: string) => {
+    if (!query || query.trim() === "") return;
+    setIsSearchingLocation(true);
+    setDetectedArea("Searching address...");
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+      const data = await res.json();
+      if (data && data[0]) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        setLatitude(lat);
+        setLongitude(lon);
+        setLocationInput(data[0].display_name);
+        setDetectedArea(data[0].display_name);
+      } else {
+        setDetectedArea("Location not found. Try searching for 'GEC Circle, Chattogram'.");
+      }
+    } catch (e) {
+      console.error("Geocoding failed:", e);
+      setDetectedArea("Search failed. Check your network connection.");
+    } finally {
+      setIsSearchingLocation(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleUseCurrentLocation = () => {
+    setIsLocating(true);
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setIsLocating(false);
+          setLatitude(pos.coords.latitude);
+          setLongitude(pos.coords.longitude);
+          setLocationInput(`${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`);
+          setDetectedArea("Chowdhury Road, Ward 15, Chattogram");
+        },
+        (err) => {
+          console.warn("Geolocation failed:", err.message);
+          setIsLocating(false);
+          setLatitude(22.3569);
+          setLongitude(91.8123);
+          setLocationInput("22.356900, 91.812300");
+          setDetectedArea("GEC Circle, East Gate, Chattogram");
+        }
+      );
+    } else {
+      setIsLocating(false);
+      setLatitude(22.3569);
+      setLongitude(91.8123);
+      setLocationInput("22.356900, 91.812300");
+      setDetectedArea("GEC Circle, East Gate, Chattogram");
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (description.length < 20) return;
     setIsSubmitting(true);
-    setTimeout(() => {
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("description", description);
+      if (latitude !== null) fd.append("latitude", String(latitude));
+      if (longitude !== null) fd.append("longitude", String(longitude));
+      if (selectedFile) {
+        fd.append("image", selectedFile);
+      }
+      const res = await createComplaint(fd);
+      if (res.success) {
+        setIsSubmitted(true);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
       setIsSubmitting(false);
-      setIsSubmitted(true);
-    }, 1500);
+    }
   };
 
   return (
@@ -80,7 +156,7 @@ export default function NewComplaintPage() {
             <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-gray-150 p-6 sm:p-8 shadow-sm space-y-8">
               
               {/* Evidence Upload */}
-              <EvidenceUpload />
+              <EvidenceUpload onFileSelect={setSelectedFile} />
 
               {/* Description field */}
               <div className="space-y-2">
@@ -113,15 +189,29 @@ export default function NewComplaintPage() {
                 <div className="flex flex-col md:flex-row gap-6">
                   {/* Left Location details */}
                   <div className="flex-1 space-y-4">
-                    <div className="relative">
-                      <MapPin className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none w-5 h-5 my-auto" />
+                    <div className="relative flex items-center w-full">
+                      <MapPin className="absolute left-3 text-gray-400 pointer-events-none w-5 h-5" />
                       <input
                         type="text"
-                        placeholder="Search address or landmark..."
+                        placeholder="Search address or landmark (e.g. GEC Circle)..."
                         value={locationInput}
                         onChange={(e) => setLocationInput(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-brand-teal bg-white transition-all text-gray-800 font-semibold placeholder-gray-400"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleSearchLocation(locationInput);
+                          }
+                        }}
+                        className="w-full pl-10 pr-20 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-brand-teal bg-white transition-all text-gray-800 font-semibold placeholder-gray-400"
                       />
+                      <button
+                        type="button"
+                        onClick={() => handleSearchLocation(locationInput)}
+                        disabled={isSearchingLocation}
+                        className="absolute right-2 bg-brand-teal hover:bg-brand-teal-hover text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all active:scale-[0.97] cursor-pointer disabled:opacity-50 select-none"
+                      >
+                        {isSearchingLocation ? "Locating..." : "Search"}
+                      </button>
                     </div>
 
                     <button
@@ -145,31 +235,27 @@ export default function NewComplaintPage() {
                   </div>
 
                   {/* Right Map visualizer */}
-                  <div className="w-full md:w-64 h-48 sm:h-auto min-h-[160px] bg-slate-100 rounded-3xl border border-gray-150 relative overflow-hidden shrink-0 shadow-inner flex items-center justify-center">
-                    {/* Mock SVG Map background */}
-                    <svg className="absolute inset-0 w-full h-full opacity-35" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                      <path d="M0,20 Q40,40 100,10" fill="none" stroke="#94a3b8" strokeWidth="1" />
-                      <path d="M0,50 L100,60" fill="none" stroke="#94a3b8" strokeWidth="1.5" />
-                      <path d="M20,0 L30,100" fill="none" stroke="#94a3b8" strokeWidth="1" />
-                      <path d="M70,0 Q60,50 80,100" fill="none" stroke="#94a3b8" strokeWidth="1.2" />
-                      <circle cx="50" cy="50" r="15" fill="#e2e8f0" />
-                    </svg>
-
-                    {/* Blue dot/Pulse for location */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center">
-                      <span className="absolute inline-flex h-10 w-10 rounded-full bg-sky-400 opacity-20 animate-ping" />
-                      <div className="w-4 h-4 bg-sky-500 rounded-full border-2 border-white shadow-md relative" />
-                    </div>
-
-                    {/* Red Pin representing destination */}
-                    {locationInput && (
-                      <div className="absolute top-[40%] left-[60%] -translate-x-1/2 -translate-y-1/2 z-10 animate-bounce">
-                        <MapPin className="w-8 h-8 text-red-500 fill-red-500" />
-                      </div>
-                    )}
+                  <div className="w-full md:w-64 h-48 sm:h-auto min-h-[160px] relative overflow-hidden shrink-0">
+                    <InteractiveMap
+                      latitude={latitude}
+                      longitude={longitude}
+                      onChange={(lat, lng) => {
+                        setLatitude(lat);
+                        setLongitude(lng);
+                        setLocationInput(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                        setDetectedArea(`Selected Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                      }}
+                    />
                   </div>
                 </div>
               </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-xs font-bold text-red-600 flex items-center space-x-2">
+                  <AlertTriangle className="w-4.5 h-4.5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
 
               {/* Form Action buttons */}
               <div className="flex items-center gap-6 pt-4 border-t border-slate-50">
