@@ -3,11 +3,13 @@
 import React, { useState } from "react";
 import { createComplaint } from "@/lib/api";
 import Link from "next/link";
-import { MapPin, Navigation, Compass, Sparkles, AlertTriangle, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { MapPin, Navigation, Compass, Sparkles, AlertTriangle, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import EvidenceUpload from "@/components/EvidenceUpload";
 import LiveAIAnalysis from "@/components/LiveAIAnalysis";
 import ReportingGuidelines from "@/components/ReportingGuidelines";
+import SuccessModal from "@/components/SuccessModal";
 import dynamic from "next/dynamic";
 
 const InteractiveMap = dynamic(() => import("@/components/InteractiveMap"), {
@@ -20,6 +22,7 @@ const InteractiveMap = dynamic(() => import("@/components/InteractiveMap"), {
 });
 
 export default function NewComplaintPage() {
+  const router = useRouter();
   const [description, setDescription] = useState("");
   const [locationInput, setLocationInput] = useState("");
   const [isLocating, setIsLocating] = useState(false);
@@ -32,6 +35,7 @@ export default function NewComplaintPage() {
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [reportId, setReportId] = useState("");
 
   const charLimit = 1000;
 
@@ -113,6 +117,7 @@ export default function NewComplaintPage() {
       }
       const res = await createComplaint(fd);
       if (res.success) {
+        setReportId(`#CTG-2024-${res.complaint?.id || Math.floor(1000 + Math.random() * 9000)}`);
         setIsSubmitted(true);
       }
     } catch (err: any) {
@@ -120,6 +125,21 @@ export default function NewComplaintPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setIsSubmitted(false);
+  };
+
+  const handleViewDashboard = () => {
+    router.push("/dashboard");
+  };
+
+  const handleSubmitAnother = () => {
+    setDescription("");
+    setLocationInput("");
+    setDetectedArea("Chattogram, Bangladesh");
+    setIsSubmitted(false);
   };
 
   return (
@@ -152,161 +172,137 @@ export default function NewComplaintPage() {
             </p>
           </div>
 
-          {!isSubmitted ? (
-            <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-gray-150 p-6 sm:p-8 shadow-sm space-y-8">
-              
-              {/* Evidence Upload */}
-              <EvidenceUpload onFileSelect={setSelectedFile} />
+          <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-gray-150 p-6 sm:p-8 shadow-sm space-y-8">
+            
+            {/* Evidence Upload */}
+            <EvidenceUpload onFileSelect={setSelectedFile} />
 
-              {/* Description field */}
-              <div className="space-y-2">
-                <label className="text-xs font-black text-gray-500 uppercase tracking-widest block">
-                  Issue Description
-                </label>
-                <textarea
-                  required
-                  value={description}
-                  onChange={handleDescriptionChange}
-                  rows={6}
-                  placeholder="Describe the problem in detail (e.g., 'Large pothole blocking the left lane near GEC Circle...')"
-                  className="w-full px-4 py-3.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-brand-teal bg-white transition-all text-gray-800 placeholder-gray-400 resize-none font-medium"
-                />
-                <div className="flex justify-between text-xxs sm:text-xs font-semibold text-gray-400">
-                  <span className={description.length < 20 && description.length > 0 ? "text-amber-500 font-bold" : ""}>
-                    Min 20 characters
-                  </span>
-                  <span>
-                    {description.length} / {charLimit}
-                  </span>
-                </div>
-              </div>
-
-              {/* Location field */}
-              <div className="space-y-4">
-                <label className="text-xs font-black text-gray-500 uppercase tracking-widest block">
-                  Location
-                </label>
-                <div className="flex flex-col md:flex-row gap-6">
-                  {/* Left Location details */}
-                  <div className="flex-1 space-y-4">
-                    <div className="relative flex items-center w-full">
-                      <MapPin className="absolute left-3 text-gray-400 pointer-events-none w-5 h-5" />
-                      <input
-                        type="text"
-                        placeholder="Search address or landmark (e.g. GEC Circle)..."
-                        value={locationInput}
-                        onChange={(e) => setLocationInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleSearchLocation(locationInput);
-                          }
-                        }}
-                        className="w-full pl-10 pr-20 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-brand-teal bg-white transition-all text-gray-800 font-semibold placeholder-gray-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleSearchLocation(locationInput)}
-                        disabled={isSearchingLocation}
-                        className="absolute right-2 bg-brand-teal hover:bg-brand-teal-hover text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all active:scale-[0.97] cursor-pointer disabled:opacity-50 select-none"
-                      >
-                        {isSearchingLocation ? "Locating..." : "Search"}
-                      </button>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleUseCurrentLocation}
-                      disabled={isLocating}
-                      className="w-full flex items-center justify-center space-x-2 border border-gray-200 hover:border-brand-teal text-brand-teal font-bold px-4 py-3 rounded-xl transition-all text-xs bg-white cursor-pointer select-none active:scale-[0.98] disabled:opacity-50"
-                    >
-                      <Compass className={`w-4 h-4 ${isLocating ? "animate-spin" : ""}`} />
-                      <span>{isLocating ? "Locating..." : "Use Current Location"}</span>
-                    </button>
-
-                    <div className="bg-sky-50/50 border border-sky-100/50 rounded-2xl p-4 space-y-1">
-                      <span className="text-[9px] font-black text-sky-600 uppercase tracking-widest block">
-                        Detected Area
-                      </span>
-                      <p className="text-sm font-black text-sky-800">
-                        {detectedArea}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Right Map visualizer */}
-                  <div className="w-full md:w-64 h-48 sm:h-auto min-h-[160px] relative overflow-hidden shrink-0">
-                    <InteractiveMap
-                      latitude={latitude}
-                      longitude={longitude}
-                      onChange={(lat, lng) => {
-                        setLatitude(lat);
-                        setLongitude(lng);
-                        setLocationInput(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-                        setDetectedArea(`Selected Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-xs font-bold text-red-600 flex items-center space-x-2">
-                  <AlertTriangle className="w-4.5 h-4.5 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {/* Form Action buttons */}
-              <div className="flex items-center gap-6 pt-4 border-t border-slate-50">
-                <button
-                  type="submit"
-                  disabled={isSubmitting || description.length < 20}
-                  className="bg-brand-teal hover:bg-brand-teal-hover text-white text-sm font-bold px-8 py-3.5 rounded-2xl shadow-md transition-all select-none active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none cursor-pointer"
-                >
-                  {isSubmitting ? "Submitting..." : "Submit Report"}
-                </button>
-                <Link
-                  href="/complaints"
-                  className="text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  Save as Draft
-                </Link>
-              </div>
-
-            </form>
-          ) : (
-            /* Success confirmation card */
-            <div className="bg-white rounded-3xl border border-gray-150 p-8 sm:p-12 text-center shadow-sm space-y-6 animate-scale-up">
-              <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-md">
-                <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Report Successfully Filed</h3>
-                <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed">
-                  Your complaint was successfully filed in our citizen reports directory. MuniFix AI has dispatched it to the Ward 15 supervisor for scheduling.
-                </p>
-              </div>
-              <div className="pt-4 flex flex-col sm:flex-row justify-center gap-4">
-                <Link href="/complaints">
-                  <button className="w-full bg-brand-teal hover:bg-brand-teal-hover text-white text-sm font-bold px-6 py-3.5 rounded-xl shadow-md transition-colors cursor-pointer">
-                    Go to Directory
-                  </button>
-                </Link>
-                <button
-                  onClick={() => {
-                    setDescription("");
-                    setLocationInput("");
-                    setDetectedArea("Chattogram, Bangladesh");
-                    setIsSubmitted(false);
-                  }}
-                  className="w-full border border-gray-200 hover:bg-slate-50 text-gray-600 text-sm font-semibold px-6 py-3.5 rounded-xl transition-colors cursor-pointer"
-                >
-                  File Another Issue
-                </button>
+            {/* Description field */}
+            <div className="space-y-2">
+              <label className="text-xs font-black text-gray-500 uppercase tracking-widest block">
+                Issue Description
+              </label>
+              <textarea
+                required
+                value={description}
+                onChange={handleDescriptionChange}
+                rows={6}
+                placeholder="Describe the problem in detail (e.g., 'Large pothole blocking the left lane near GEC Circle...')"
+                className="w-full px-4 py-3.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-brand-teal bg-white transition-all text-gray-800 placeholder-gray-400 resize-none font-medium"
+              />
+              <div className="flex justify-between text-xxs sm:text-xs font-semibold text-gray-400">
+                <span className={description.length < 20 && description.length > 0 ? "text-amber-500 font-bold" : ""}>
+                  Min 20 characters
+                </span>
+                <span>
+                  {description.length} / {charLimit}
+                </span>
               </div>
             </div>
-          )}
+
+            {/* Location field */}
+            <div className="space-y-4">
+              <label className="text-xs font-black text-gray-500 uppercase tracking-widest block">
+                Location
+              </label>
+              <div className="flex flex-col md:flex-row gap-6">
+                {/* Left Location details */}
+                <div className="flex-1 space-y-4">
+                  <div className="relative flex items-center w-full">
+                    <MapPin className="absolute left-3 text-gray-400 pointer-events-none w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="Search address or landmark (e.g. GEC Circle)..."
+                      value={locationInput}
+                      onChange={(e) => setLocationInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSearchLocation(locationInput);
+                        }
+                      }}
+                      className="w-full pl-10 pr-20 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-brand-teal bg-white transition-all text-gray-800 font-semibold placeholder-gray-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSearchLocation(locationInput)}
+                      disabled={isSearchingLocation}
+                      className="absolute right-2 bg-brand-teal hover:bg-brand-teal-hover text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all active:scale-[0.97] cursor-pointer disabled:opacity-50 select-none"
+                    >
+                      {isSearchingLocation ? "Locating..." : "Search"}
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentLocation}
+                    disabled={isLocating}
+                    className="w-full flex items-center justify-center space-x-2 border border-gray-200 hover:border-brand-teal text-brand-teal font-bold px-4 py-3 rounded-xl transition-all text-xs bg-white cursor-pointer select-none active:scale-[0.98] disabled:opacity-50"
+                  >
+                    <Compass className={`w-4 h-4 ${isLocating ? "animate-spin" : ""}`} />
+                    <span>{isLocating ? "Locating..." : "Use Current Location"}</span>
+                  </button>
+
+                  <div className="bg-sky-50/50 border border-sky-100/50 rounded-2xl p-4 space-y-1">
+                    <span className="text-[9px] font-black text-sky-600 uppercase tracking-widest block">
+                      Detected Area
+                    </span>
+                    <p className="text-sm font-black text-sky-800">
+                      {detectedArea}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Map visualizer */}
+                <div className="w-full md:w-64 h-48 sm:h-auto min-h-[160px] relative overflow-hidden shrink-0">
+                  <InteractiveMap
+                    latitude={latitude}
+                    longitude={longitude}
+                    onChange={(lat, lng) => {
+                      setLatitude(lat);
+                      setLongitude(lng);
+                      setLocationInput(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                      setDetectedArea(`Selected Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-xs font-bold text-red-600 flex items-center space-x-2">
+                <AlertTriangle className="w-4.5 h-4.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Form Action buttons */}
+            <div className="flex items-center gap-6 pt-4 border-t border-slate-50">
+              <button
+                type="submit"
+                disabled={isSubmitting || description.length < 20}
+                className="bg-brand-teal hover:bg-brand-teal-hover text-white text-sm font-bold px-8 py-3.5 rounded-2xl shadow-md transition-all select-none active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none cursor-pointer"
+              >
+                {isSubmitting ? "Submitting..." : "Submit Report"}
+              </button>
+              <Link
+                href="/complaints"
+                className="text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                Save as Draft
+              </Link>
+            </div>
+
+          </form>
+
+          {/* Reusable Success confirmation modal overlay */}
+          <SuccessModal
+            isOpen={isSubmitted}
+            onClose={handleCloseModal}
+            reportId={reportId}
+            onPrimaryAction={handleViewDashboard}
+            onSecondaryAction={handleSubmitAnother}
+          />
         </div>
 
         {/* Right Column: AI Analysis & Guidelines (1/3 width) */}
