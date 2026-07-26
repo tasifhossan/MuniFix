@@ -10,7 +10,9 @@ import {
   Lock,
   UserCheck,
   ShieldCheck,
-  ChevronRight
+  ArrowRight,
+  ChevronRight,
+  Sparkles
 } from "lucide-react";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
@@ -29,12 +31,49 @@ export default function RegisterPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value
-    }));
+  const requirements = [
+    { label: "At least 8 characters", val: formData.password.length >= 8 },
+    { label: "Contains a number", val: /\D*\d/.test(formData.password) },
+    { label: "Contains capital letter", val: /[A-Z]/.test(formData.password) },
+    { label: "Contains special character", val: /[^A-Za-z0-9]/.test(formData.password) }
+  ];
+
+  const passwordStrength = requirements.filter((req) => req.val).length;
+
+  const wards = [
+    { value: 1, label: "Ward 1 - South Pahartali" },
+    { value: 2, label: "Ward 2 - Jalalabad" },
+    { value: 3, label: "Ward 3 - Panchlaish" },
+    { value: 4, label: "Ward 4 - Chandgaon" },
+    { value: 7, label: "Ward 7 - West Shulukbahar" },
+    { value: 8, label: "Ward 8 - Shulukbahar" },
+    { value: 15, label: "Ward 15 - Chawkbazar" },
+    { value: 16, label: "Ward 16 - Sulakbahar" },
+    { value: 20, label: "Ward 20 - Dewan Bazar" },
+    { value: 21, label: "Ward 21 - Jamal Khan" },
+    { value: 22, label: "Ward 22 - Enayet Bazar" },
+    { value: 24, label: "Ward 24 - North Agrabad" },
+    { value: 27, label: "Ward 27 - South Agrabad" },
+    { value: 31, label: "Ward 31 - Alkaran" },
+    { value: 32, label: "Ward 32 - Pathantooly" },
+    { value: 41, label: "Ward 41 - South Patenga" }
+  ];
+
+  const departments = [
+    { value: "Waste Management", label: "Waste Management" },
+    { value: "Engineering / Roads", label: "Engineering & Roads" },
+    { value: "Water & Sewerage", label: "Water & Sewerage" },
+    { value: "Public Health", label: "Public Health" }
+  ];
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    if (type === "checkbox") {
+      const target = e.target as HTMLInputElement;
+      setFormData((prev) => ({ ...prev, [name]: target.checked }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
