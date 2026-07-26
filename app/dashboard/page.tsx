@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
+import LoadingScreen from "@/components/LoadingScreen";
 import { fetchComplaints } from "@/lib/api";
 import dynamic from "next/dynamic";
 
@@ -54,6 +55,10 @@ export default function CitizenDashboard() {
   const totalCount = complaints.length;
   const resolvedCount = complaints.filter(c => c.status === "resolved").length;
   const inProgressCount = complaints.filter(c => c.status === "in_progress" || c.status === "assigned").length;
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
