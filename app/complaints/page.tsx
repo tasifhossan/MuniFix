@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, SlidersHorizontal, Plus, AlertTriangle, X } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, Plus, AlertTriangle, X, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import FilterBar from "@/components/FilterBar";
 import ComplaintCard from "@/components/ComplaintCard";
 import EmergencyCallout from "@/components/EmergencyCallout";
 import Pagination from "@/components/Pagination";
-import { initialComplaints, Complaint } from "@/lib/mockData";
+import { Complaint } from "@/lib/mockData";
+import { fetchComplaints } from "@/lib/api";
 
 export default function ComplaintsPage() {
   const router = useRouter();
@@ -37,11 +38,46 @@ export default function ComplaintsPage() {
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [emergencySubmitted, setEmergencySubmitted] = useState(false);
 
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        const data = await fetchComplaints();
+        if (data.success) {
+          const mapped = data.complaints.map((c: any) => ({
+            id: c.id,
+            title: c.category + " Issue - " + (c.citizen_name || "Citizen Report"),
+            description: c.description,
+            priority: c.priority === "critical" || c.priority === "high" ? "CRITICAL" : c.priority === "low" ? "LOW" : "MEDIUM",
+            status: c.status === "assigned" ? "Dispatched" : c.status === "in_progress" ? "In Progress" : c.status === "resolved" ? "Resolved" : "Pending Approval",
+            location: c.latitude && c.longitude ? `${c.latitude}, ${c.longitude}` : "Chattogram City",
+            time: `Reported on ${new Date(c.created_at).toLocaleDateString()} • ${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+            image: c.image_url || "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop",
+            category: c.category,
+            date: c.created_at,
+            reporter: c.citizen_name,
+            original: c
+          }));
+          setComplaints(mapped);
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
 
 
   // Filtering and searching logic
   const filteredComplaints = useMemo(() => {
-    return initialComplaints.filter((item) => {
+    return complaints.filter((item) => {
       // Search text match (title, description, location)
       const matchesSearch =
         !searchQuery ||
@@ -50,8 +86,15 @@ export default function ComplaintsPage() {
         item.location.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Category match
-      const matchesCategory =
-        !filters.category || item.category === filters.category;
+      let matchesCategory = !filters.category;
+      if (filters.category) {
+        const cat = filters.category.toLowerCase();
+        const itemCat = item.category.toLowerCase();
+        if (cat === "waste" && itemCat.includes("waste")) matchesCategory = true;
+        else if (cat === "roads" && (itemCat.includes("road") || itemCat.includes("engineering"))) matchesCategory = true;
+        else if (cat === "water" && (itemCat.includes("water") || itemCat.includes("sewer") || itemCat.includes("logging"))) matchesCategory = true;
+        else if (cat === "lighting" && (itemCat.includes("light") || itemCat.includes("electricity"))) matchesCategory = true;
+      }
 
       // Priority match
       const matchesPriority =
@@ -66,15 +109,15 @@ export default function ComplaintsPage() {
 
       return matchesSearch && matchesCategory && matchesPriority && matchesStatus && matchesDate;
     });
-  }, [searchQuery, filters]);
+  }, [complaints, searchQuery, filters]);
 
   // Sorting logic
   const sortedComplaints = useMemo(() => {
     const list = [...filteredComplaints];
     if (sortBy === "newest") {
-      return list.sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true, sensitivity: "base" }));
+      return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     } else if (sortBy === "oldest") {
-      return list.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: "base" }));
+      return list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     } else if (sortBy === "upvotes") {
       return list.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
     }
@@ -136,11 +179,8 @@ export default function ComplaintsPage() {
           <div className="flex items-center justify-between pb-2">
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-                Complaints Dashboard
+                Complaints
               </h1>
-              <p className="text-gray-500 text-sm font-medium mt-1">
-                Monitor, search, and manage local municipal issues.
-              </p>
             </div>
             
             <Link
@@ -212,7 +252,18 @@ export default function ComplaintsPage() {
           </div>
 
           {/* Cards Grid Layout */}
-          {paginatedComplaints.length > 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-150 shadow-sm animate-pulse">
+              <Loader2 className="w-10 h-10 text-brand-teal animate-spin" />
+              <p className="text-gray-500 text-sm font-bold mt-4">Connecting to Neon DB...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-150 shadow-sm text-center px-6">
+              <AlertTriangle className="w-10 h-10 text-red-500" />
+              <p className="text-gray-900 font-bold mt-4">Failed to load complaints</p>
+              <p className="text-gray-500 text-xs mt-1 max-w-sm">{error}</p>
+            </div>
+          ) : paginatedComplaints.length > 0 ? (
             <div className="grid grid-cols-6 gap-6">
               
               {/* Card 1 & Emergency Callout Box */}
@@ -254,7 +305,7 @@ export default function ComplaintsPage() {
               ))}
 
               {/* Fallback for subsequent pages or filtered lists (render as medium list) */}
-              {(currentPage > 1 || sortedComplaints.length !== initialComplaints.length) && 
+              {(currentPage > 1 || sortedComplaints.length !== complaints.length) && 
                 sortedComplaints.map((item, idx) => {
                   // If page size is filtered, just render them in a clean stacked list
                   // unless it's the first item which we can still show as large or medium
