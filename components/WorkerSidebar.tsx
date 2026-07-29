@@ -14,15 +14,24 @@ import {
   User
 } from "lucide-react";
 
+import { usePathname } from "next/navigation";
+
 interface WorkerSidebarProps {
   activeNav?: string;
   onNavClick?: (nav: string) => void;
 }
 
 export default function WorkerSidebar({ 
-  activeNav = "dashboard", 
+  activeNav, 
   onNavClick 
 }: WorkerSidebarProps) {
+  const pathname = usePathname();
+
+  const currentActive = activeNav || (
+    pathname === "/worker" ? "dashboard" :
+    pathname?.startsWith("/worker/profile") ? "profile" :
+    pathname?.startsWith("/worker/tasks") ? "complaints" : ""
+  );
   
   const menuItems = [
     { id: "dashboard", label: "Dashboard", href: "/worker", icon: <LayoutDashboard className="w-4.5 h-4.5" /> },
@@ -59,7 +68,7 @@ export default function WorkerSidebar({
         {/* Main Navigation Links */}
         <nav className="space-y-1.5 flex-1">
           {menuItems.map((item) => {
-            const isActive = activeNav === item.id;
+            const isActive = currentActive === item.id;
             const btnClass = `w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 select-none cursor-pointer active:scale-[0.98] ${
               isActive
                 ? "bg-brand-teal text-white shadow-md shadow-brand-teal/10"
@@ -106,7 +115,11 @@ export default function WorkerSidebar({
       {/* Footer Navigation Elements */}
       <div className="space-y-1.5 pt-4">
         <Link href="/help" className="block">
-          <button className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-brand-teal hover:bg-slate-100/80 transition-all select-none cursor-pointer">
+          <button className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all select-none cursor-pointer ${
+            pathname === "/help"
+              ? "bg-brand-teal text-white shadow-md shadow-brand-teal/10"
+              : "text-slate-500 hover:text-brand-teal hover:bg-slate-100/80"
+          }`}>
             <HelpCircle className="w-4.5 h-4.5" />
             <span>Help Center</span>
           </button>

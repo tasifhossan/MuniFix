@@ -12,6 +12,8 @@ import {
   LogOut
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import WorkerSidebar from "./WorkerSidebar";
+import AdminSidebar from "./AdminSidebar";
 
 interface SidebarProps {
   onItemSelect?: (item: string) => void;
@@ -19,7 +21,19 @@ interface SidebarProps {
 
 export default function Sidebar({ onItemSelect }: SidebarProps) {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+
+  // Dynamic delegation for each type of user
+  if (user?.role === "field_worker") {
+    return <WorkerSidebar />;
+  }
+
+  if (user?.role === "dept_admin" || user?.role === "super_admin") {
+    const adminActiveNav = 
+      pathname === "/help" ? "help" :
+      pathname === "/settings" ? "settings" : undefined;
+    return <AdminSidebar role={user.role === "super_admin" ? "superadmin" : "admin"} activeNav={adminActiveNav} />;
+  }
 
   const mainNavItems = [
     { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
