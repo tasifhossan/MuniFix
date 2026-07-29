@@ -55,15 +55,18 @@ export function setActiveProfile(profile: ActiveProfile) {
   }
 }
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-function getHeaders() {
-  const profile = getActiveProfile();
-  return {
-    "x-user-id": profile.id,
-    "x-user-role": profile.role,
-    "x-department-id": profile.department_id ? String(profile.department_id) : "",
-  };
+export function getHeaders(): Record<string, string> {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token") || localStorage.getItem("munifix_authtoken");
+    if (token) {
+      return {
+        "Authorization": `Bearer ${token}`
+      };
+    }
+  }
+  return {};
 }
 
 export async function fetchComplaints(filters: { category?: string; priority?: string; status?: string } = {}) {
@@ -73,7 +76,7 @@ export async function fetchComplaints(filters: { category?: string; priority?: s
   if (filters.status) params.append("status", filters.status.toLowerCase());
 
   const headers = getHeaders();
-  const res = await fetch(`${API_BASE_URL}/complaints?${params.toString()}`, {
+  const res = await fetch(`${API_BASE_URL}/complain?${params.toString()}`, {
     method: "GET",
     headers: {
       ...headers,
@@ -87,7 +90,7 @@ export async function fetchComplaints(filters: { category?: string; priority?: s
 }
 
 export async function fetchComplaintById(id: string) {
-  const res = await fetch(`${API_BASE_URL}/complaints/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/complain/${id}`, {
     method: "GET",
     headers: getHeaders()
   });
@@ -104,10 +107,10 @@ export async function createComplaint(formData: FormData) {
     formData.append("citizen_id", profile.id);
   }
 
-  const res = await fetch(`${API_BASE_URL}/complaints`, {
+  const res = await fetch(`${API_BASE_URL}/complain`, {
     method: "POST",
     headers: {
-      // Browser automatically sets Content-Type boundary for FormData
+      ...getHeaders()
     },
     body: formData
   });
@@ -116,6 +119,32 @@ export async function createComplaint(formData: FormData) {
     throw new Error(errorData.message || "Failed to submit complaint");
   }
   return res.json();
+}
+
+export async function editComplaint(
+  id: string,
+  payload: { description?: string; category?: string; latitude?: number; longitude?: number }
+) {
+  const res = await fetch(`${API_BASE_URL}/complain/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to edit complaint");
+  }
+  return res.json();
+}
+
+export async function updateComplaint(
+  id: string,
+  payload: { description?: string; category?: string; latitude?: number; longitude?: number }
+) {
+  return editComplaint(id, payload);
 }
 
 export async function updateComplaintStatus(
@@ -128,7 +157,7 @@ export async function updateComplaintStatus(
     changed_by: profile.id
   };
 
-  const res = await fetch(`${API_BASE_URL}/complaints/${id}/status`, {
+  const res = await fetch(`${API_BASE_URL}/complain/${id}/status`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -144,13 +173,71 @@ export async function updateComplaintStatus(
 }
 
 export async function deleteComplaint(id: string) {
-  const res = await fetch(`${API_BASE_URL}/complaints/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/complain/${id}`, {
     method: "DELETE",
     headers: getHeaders()
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to delete complaint");
+  }
+  return res.json();
+}
+
+export async function searchComplaints(params: {
+  q?: string;
+  category?: string;
+  priority?: string;
+  status?: string;
+  date?: string;
+}) {
+  const queryParams = new URLSearchParams();
+  if (params.q) queryParams.append("q", params.q);
+  if (params.category) queryParams.append("category", params.category);
+  if (params.priority) queryParams.append("priority", params.priority);
+  if (params.status) queryParams.append("status", params.status);
+  if (params.date) queryParams.append("date", params.date);
+
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/complain/search?${queryParams.toString()}`, {
+    method: "GET",
+    headers: {
+      ...headers,
+    }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to search complaints");
+  }
+  return res.json();
+}
+
+export async function fetchNotifications() {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/notifications`, {
+    method: "GET",
+    headers: {
+      ...headers,
+    }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch notifications");
+  }
+  return res.json();
+}
+
+export async function markNotificationAsRead(id: string) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+    method: "PATCH",
+    headers: {
+      ...headers,
+    }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to mark notification as read");
   }
   return res.json();
 }

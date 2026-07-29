@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Bell, Menu, X, ChevronDown, Globe, Mail, Phone } from "lucide-react";
+import { Search, Bell, Menu, X, ChevronDown, Globe, Mail, Phone, Loader2 } from "lucide-react";
 import NotificationDropdown, { NotificationItem } from "./NotificationDropdown";
-import { getActiveProfile, setActiveProfile, profiles, ActiveProfile } from "@/lib/api";
+import { getActiveProfile, setActiveProfile, profiles, ActiveProfile, fetchNotifications, markNotificationAsRead } from "@/lib/api";
 
 interface NavbarProps {
   activeNav?: string;
@@ -39,15 +39,87 @@ export default function Navbar({
     }
   };
 
-  // Mock live notifications for MuniFix Ctg matching the screenshot
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    { id: 1, text: "Your complaint #CTG-8821 has been assigned", type: "complaint", time: "2m ago", read: false },
-    { id: 2, text: "New task assigned in Agrabad", type: "task", time: "15m ago", read: false },
-    { id: 3, text: "Monthly report is ready for Chattogram Municipal", type: "report", time: "1h ago", read: true },
-  ]);
+  // Live notifications from MuniFix backend
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
-  const handleMarkAllRead = () => {
+  const formatTime = (dateStr: string) => {
+    try {
+      const now = new Date();
+      const date = new Date(dateStr);
+      const diffMs = now.getTime() - date.getTime();
+      if (isNaN(diffMs) || diffMs < 0) return "Just now";
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays}d ago`;
+    } catch (e) {
+      return "Some time ago";
+    }
+  };
+
+  const loadNotifications = async () => {
+    try {
+      setNotificationsLoading(true);
+      const data = await fetchNotifications();
+      if (data.success) {
+        const mapped = data.notifications.map((n: any) => ({
+          id: n.id,
+          text: n.message,
+          type: n.complaint_id ? "complaint" : "general",
+          time: formatTime(n.created_at),
+          read: n.is_read
+        }));
+        setNotifications(mapped);
+        setUnreadCount(mapped.filter((n: any) => !n.read).length);
+      }
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? (localStorage.getItem("token") || localStorage.getItem("munifix_authtoken")) : null;
+    if (token) {
+      loadNotifications();
+    }
+  }, []);
+
+  const handleBellClick = () => {
+    const nextState = !notificationsOpen;
+    setNotificationsOpen(nextState);
+    if (nextState) {
+      loadNotifications();
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+    try {
+      await Promise.all(unreadIds.map(id => markNotificationAsRead(String(id))));
+    } catch (err) {
+      console.error("Failed to mark all as read:", err);
+    }
+  };
+
+  const handleNotificationItemClick = async (id: string | number) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+    try {
+      await markNotificationAsRead(String(id));
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
   };
 
   const handleViewAll = () => {
@@ -155,15 +227,23 @@ export default function Navbar({
           </div>
 
           {/* Notification Toggle */}
-          <div className="relative">
+          <div className="relative flex items-center">
             <button
-              onClick={() => setNotificationsOpen(!notificationsOpen)}
-              className="text-slate-600 hover:text-[#005c55] p-2 rounded-full hover:bg-slate-50 transition-colors relative cursor-pointer"
+              onClick={handleBellClick}
+              className="text-slate-600 hover:text-[#005c55] p-2 rounded-full hover:bg-slate-50 transition-colors relative cursor-pointer flex items-center justify-center min-w-9 min-h-9"
               aria-label="Notifications"
             >
-              <Bell className="w-5 h-5" />
-              {!user && (
-                <span className="absolute top-1.5 right-1.5 bg-orange-500 w-2 h-2 rounded-full ring-2 ring-white" />
+              {notificationsLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-[#005c55]" />
+              ) : (
+                <>
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white">
+                      {unreadCount}
+                    </span>
+                  )}
+                </>
               )}
             </button>
 
@@ -172,6 +252,7 @@ export default function Navbar({
                 notifications={notifications}
                 onMarkAllRead={handleMarkAllRead}
                 onViewAll={handleViewAll}
+                onItemClick={handleNotificationItemClick}
                 onClose={() => setNotificationsOpen(false)}
               />
             )}
