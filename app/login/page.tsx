@@ -1,19 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   User,
   Lock,
   LogIn,
-  ShieldCheck,
-  ChevronRight,
   Landmark
 } from "lucide-react";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
+  const { login } = useAuth();
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     emailOrUsername: "",
     password: "",
@@ -21,7 +24,18 @@ export default function LoginPage() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const success = params.get("success");
+      if (success) {
+        setSuccessMsg(success);
+      }
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -31,66 +45,22 @@ export default function LoginPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await login(formData.emailOrUsername, formData.password);
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Invalid credentials");
+    } finally {
       setLoading(false);
-      setSubmitted(true);
-    }, 1500);
+    }
   };
 
   const isFormValid = formData.emailOrUsername && formData.password;
-
-  if (submitted) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-between bg-[#f8fafc]/40 py-12 px-4 relative overflow-hidden font-sans">
-        {/* Ambient blurred backdrop shapes */}
-        <div className="absolute top-[-10%] left-[-15%] w-[450px] sm:w-[500px] h-[450px] sm:h-[500px] bg-teal-100/30 rounded-full blur-[100px] sm:blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-15%] w-[550px] sm:w-[600px] h-[550px] sm:h-[600px] bg-amber-100/25 rounded-full blur-[120px] sm:blur-[150px] pointer-events-none" />
-
-        {/* Content Container */}
-        <div className="w-full max-w-lg z-10 flex flex-col items-center my-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <span className="text-3xl font-black text-brand-teal tracking-tight block mb-1">
-              MuniFix Ctg
-            </span>
-            <p className="text-gray-500 text-sm font-medium">
-              Join Chattogram's digital civic platform
-            </p>
-          </div>
-
-          {/* Success Card */}
-          <div className="w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl border border-slate-100/80 text-center space-y-6 animate-fade-in">
-            <div className="w-20 h-20 bg-teal-50 text-brand-teal rounded-full flex items-center justify-center mx-auto shadow-md">
-              <ShieldCheck className="w-10 h-10" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">Signed In Successfully!</h2>
-              <p className="text-gray-500 text-sm font-medium">
-                Welcome back! Redirecting you to the MuniFix Ctg dashboard...
-              </p>
-            </div>
-
-            <div className="pt-2">
-              <Link href="/" className="w-full block">
-                <Button variant="primary" className="w-full py-3.5 flex items-center justify-center gap-2">
-                  Go to Home Screen
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="w-full max-w-md text-center mt-12 z-10 text-xs text-gray-400 font-semibold uppercase tracking-widest">
-          Powered by CCC Digital Division
-        </footer>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#f8fafc]/40 py-12 px-4 pt-28 md:pt-12 relative overflow-hidden font-sans">
@@ -114,17 +84,32 @@ export default function LoginPage() {
         <div className="w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl border border-slate-100/80">
           <div className="text-center space-y-1.5 mb-8">
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome Back</h2>
-            <p className="text-gray-500 text-xs sm:text-sm font-semibold max-w-[280px] mx-auto leading-relaxed">
+            <p className="text-gray-550 text-xs sm:text-sm font-semibold max-w-[280px] mx-auto leading-relaxed">
               Access your municipal portal to manage complaints
             </p>
           </div>
 
+          {/* Inline Success Message */}
+          {successMsg && (
+            <div className="p-3 bg-green-50 text-green-700 rounded-xl text-xs font-semibold text-center border border-green-100 mb-5 animate-fade-in">
+              {successMsg}
+            </div>
+          )}
+
+          {/* Inline Error Message */}
+          {error && (
+            <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-semibold text-center border border-red-100 mb-5 animate-fade-in">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
-              label="Email or Username"
+              label="Email Address"
               name="emailOrUsername"
+              type="email"
               required
-              placeholder="Enter your credentials"
+              placeholder="Enter your email"
               value={formData.emailOrUsername}
               onChange={handleInputChange}
               icon={<User className="w-4.5 h-4.5" />}

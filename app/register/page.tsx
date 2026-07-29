@@ -2,22 +2,23 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   User,
   CreditCard,
   Smartphone,
   Mail,
   Lock,
-  UserCheck,
-  ShieldCheck,
-  ArrowRight,
-  ChevronRight,
-  Sparkles
+  UserCheck
 } from "lucide-react";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function RegisterPage() {
+  const { register } = useAuth();
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     name: "",
     nid: "",
@@ -28,64 +29,37 @@ export default function RegisterPage() {
     agreeTerms: false
   });
 
-  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const requirements = [
-    { label: "At least 8 characters", val: formData.password.length >= 8 },
-    { label: "Contains a number", val: /\D*\d/.test(formData.password) },
-    { label: "Contains capital letter", val: /[A-Z]/.test(formData.password) },
-    { label: "Contains special character", val: /[^A-Za-z0-9]/.test(formData.password) }
-  ];
-
-  const passwordStrength = requirements.filter((req) => req.val).length;
-
-  const wards = [
-    { value: 1, label: "Ward 1 - South Pahartali" },
-    { value: 2, label: "Ward 2 - Jalalabad" },
-    { value: 3, label: "Ward 3 - Panchlaish" },
-    { value: 4, label: "Ward 4 - Chandgaon" },
-    { value: 7, label: "Ward 7 - West Shulukbahar" },
-    { value: 8, label: "Ward 8 - Shulukbahar" },
-    { value: 15, label: "Ward 15 - Chawkbazar" },
-    { value: 16, label: "Ward 16 - Sulakbahar" },
-    { value: 20, label: "Ward 20 - Dewan Bazar" },
-    { value: 21, label: "Ward 21 - Jamal Khan" },
-    { value: 22, label: "Ward 22 - Enayet Bazar" },
-    { value: 24, label: "Ward 24 - North Agrabad" },
-    { value: 27, label: "Ward 27 - South Agrabad" },
-    { value: 31, label: "Ward 31 - Alkaran" },
-    { value: 32, label: "Ward 32 - Pathantooly" },
-    { value: 41, label: "Ward 41 - South Patenga" }
-  ];
-
-  const departments = [
-    { value: "Waste Management", label: "Waste Management" },
-    { value: "Engineering / Roads", label: "Engineering & Roads" },
-    { value: "Water & Sewerage", label: "Water & Sewerage" },
-    { value: "Public Health", label: "Public Health" }
-  ];
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    if (type === "checkbox") {
-      const target = e.target as HTMLInputElement;
-      setFormData((prev) => ({ ...prev, [name]: target.checked }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value
+    }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) return;
     if (!formData.agreeTerms) return;
 
     setLoading(true);
-    setTimeout(() => {
+    setError(null);
+    try {
+      await register({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.mobile,
+        password: formData.password,
+        role: "citizen"
+      });
+      router.push("/login?success=Account+registered+successfully.+Please+sign+in.");
+    } catch (err: any) {
+      setError(err.message || "Registration failed. Please try again.");
       setLoading(false);
-      setSubmitted(true);
-    }, 1500);
+    }
   };
 
   const isFormValid =
@@ -98,86 +72,6 @@ export default function RegisterPage() {
     formData.password === formData.confirmPassword &&
     formData.agreeTerms;
 
-  if (submitted) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-between bg-[#f8fafc]/40 py-12 px-4 relative overflow-hidden font-sans">
-        {/* Ambient blurred backdrop shapes */}
-        <div className="absolute top-[-10%] left-[-15%] w-[450px] sm:w-[500px] h-[450px] sm:h-[500px] bg-teal-100/30 rounded-full blur-[100px] sm:blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-15%] w-[550px] sm:w-[600px] h-[550px] sm:h-[600px] bg-amber-100/25 rounded-full blur-[120px] sm:blur-[150px] pointer-events-none" />
-
-        {/* Success Card Wrapper */}
-        <div className="w-full max-w-lg z-10 flex flex-col items-center my-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <span className="text-3xl font-black text-brand-teal tracking-tight block mb-1">
-              MuniFix Ctg
-            </span>
-            <p className="text-gray-500 text-sm font-medium">
-              Join Chattogram's digital civic platform
-            </p>
-          </div>
-
-          {/* Success Card Content */}
-          <div className="w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl border border-slate-100/80 text-center space-y-6 animate-fade-in">
-            <div className="w-20 h-20 bg-teal-50 text-brand-teal rounded-full flex items-center justify-center mx-auto shadow-md">
-              <ShieldCheck className="w-10 h-10" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">Registration Successful!</h2>
-              <p className="text-gray-500 text-sm font-medium">
-                Your MuniFix Ctg account has been successfully created. Welcome aboard, citizen!
-              </p>
-            </div>
-
-            <div className="bg-slate-50 rounded-2xl p-4 text-left border border-slate-100 space-y-3">
-              <div className="text-sm space-y-1 text-gray-600 font-medium">
-                <p>
-                  <span className="font-bold text-gray-700">Name:</span> {formData.name}
-                </p>
-                <p>
-                  <span className="font-bold text-gray-700">NID:</span> {formData.nid}
-                </p>
-                <p>
-                  <span className="font-bold text-gray-700">Email:</span> {formData.email}
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <Link href="/login" className="w-full block">
-                <Button variant="primary" className="w-full py-3.5 flex items-center justify-center gap-2">
-                  Go to Login Screen
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="w-full max-w-md text-center mt-12 z-10 text-xs text-gray-400 font-semibold space-y-3">
-          <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
-          <div className="flex justify-center space-x-6">
-            <Link href="/privacy" className="hover:text-brand-teal transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="/terms" className="hover:text-brand-teal transition-colors">
-              Terms of Service
-            </Link>
-            <a
-              href="https://ccc.gov.bd"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-brand-teal transition-colors"
-            >
-              Chattogram City Corporation
-            </a>
-          </div>
-        </footer>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-between bg-[#f8fafc]/40 py-12 px-4 relative overflow-hidden font-sans">
       {/* Ambient blurred backdrop shapes */}
@@ -185,7 +79,7 @@ export default function RegisterPage() {
       <div className="absolute bottom-[-10%] right-[-15%] w-[550px] sm:w-[600px] h-[550px] sm:h-[600px] bg-amber-100/25 rounded-full blur-[120px] sm:blur-[150px] pointer-events-none" />
 
       {/* Content Container */}
-      <div className="w-full max-w-lg z-10 flex flex-col items-center my-auto">
+      <div className="w-full max-w-[450px] z-10 flex flex-col items-center my-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <span className="text-3xl font-black text-brand-teal tracking-tight block mb-1">
@@ -204,6 +98,13 @@ export default function RegisterPage() {
               Enter your details to create your account.
             </p>
           </div>
+
+          {/* Inline Error Message */}
+          {error && (
+            <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-semibold text-center border border-red-100 mb-5 animate-fade-in">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input

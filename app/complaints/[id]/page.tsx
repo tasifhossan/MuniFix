@@ -9,9 +9,11 @@ import Sidebar from "@/components/Sidebar";
 import Badge from "@/components/Badge";
 import ComplaintMetrics from "@/components/ComplaintMetrics";
 import Timeline from "@/components/Timeline";
-import { fetchComplaintById, updateComplaintStatus, deleteComplaint, getActiveProfile } from "@/lib/api";
+import { fetchComplaintById, updateComplaintStatus, deleteComplaint } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ComplaintDetailsPage() {
+  const { user } = useAuth();
   const params = useParams();
   const router = useRouter();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -20,7 +22,6 @@ export default function ComplaintDetailsPage() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeProfile, setActiveProfile] = useState<any>(null);
 
   // Status update form states
   const [newStatus, setNewStatus] = useState("");
@@ -73,21 +74,6 @@ export default function ComplaintDetailsPage() {
 
   useEffect(() => {
     loadData();
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("munifix_active_profile");
-      if (stored) {
-        try {
-          setActiveProfile(JSON.parse(stored));
-        } catch (e) {}
-      } else {
-        setActiveProfile({
-          id: "f19d2bba-ea7f-4422-b5e1-55c3272e276b",
-          name: "John Citizen (Citizen)",
-          role: "citizen",
-          email: "john@gmail.com"
-        });
-      }
-    }
   }, [id]);
 
   const handleUpdateStatus = async (e: React.FormEvent) => {
@@ -258,7 +244,7 @@ export default function ComplaintDetailsPage() {
 
               {/* Action buttons (Share & Export) */}
               <div className="flex items-center gap-3 shrink-0 print:hidden">
-                {activeProfile && (activeProfile.role === "super_admin" || activeProfile.id === complaint.original?.citizen_id) && (
+                {user && (user.role === "super_admin" || user.id === complaint.original?.citizen_id) && (
                   <button
                     onClick={handleDelete}
                     disabled={isDeleting}
@@ -375,7 +361,7 @@ export default function ComplaintDetailsPage() {
           </div>
 
           {/* Admin / Dept Admin operations panel */}
-          {activeProfile && (activeProfile.role === "dept_admin" || activeProfile.role === "super_admin") && (
+          {user && (user.role === "dept_admin" || user.role === "super_admin") && (
             <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-brand-teal">
                 <Edit3 className="w-5 h-5 stroke-[2.5]" />

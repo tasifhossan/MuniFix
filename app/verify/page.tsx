@@ -1,4 +1,5 @@
 "use client";
+// NOTE: This page is pending backend support (send-otp/verify-otp endpoints are missing).
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
