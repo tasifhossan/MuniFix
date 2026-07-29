@@ -17,6 +17,7 @@ import {
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import LoadingScreen from "@/components/LoadingScreen";
+import Pagination from "@/components/Pagination";
 import { fetchComplaints } from "@/lib/api";
 import dynamic from "next/dynamic";
 
@@ -35,13 +36,17 @@ export default function CitizenDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 3;
+
   useEffect(() => {
     async function loadStats() {
       try {
         setLoading(true);
         const data = await fetchComplaints();
         if (data.success) {
-          setComplaints(data.complaints);
+          setComplaints(data.complaints ?? data.complains ?? []);
         }
       } catch (err: any) {
         setError(err.message);
@@ -70,9 +75,12 @@ export default function CitizenDashboard() {
       ).toFixed(1)
     : "—";
 
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  // Pagination logic
+  const paginatedComplaints = complaints.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  const totalPages = Math.ceil(complaints.length / itemsPerPage) || 1;
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
@@ -120,9 +128,21 @@ export default function CitizenDashboard() {
           </div>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-150 shadow-sm animate-pulse">
-              <Loader2 className="w-10 h-10 text-brand-teal animate-spin" />
-              <p className="text-gray-500 text-sm font-bold mt-4">Connecting to Neon DB...</p>
+            <div className="space-y-8">
+              {/* Stats Skeleton */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="bg-slate-200 h-[110px] rounded-3xl" />
+                ))}
+              </div>
+              {/* Map Skeleton */}
+              <div className="bg-slate-200 h-[350px] rounded-[2rem] animate-pulse" />
+              {/* Cards Skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="bg-slate-200 h-[350px] rounded-[1.5rem]" />
+                ))}
+              </div>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-150 shadow-sm text-center px-6">
@@ -209,98 +229,123 @@ export default function CitizenDashboard() {
                 </div>
 
                 {/* Grid of complaint cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {complaints.slice(0, 4).map((c) => {
-                    // Map database categories to caps labels
-                    let categoryLabel = "OTHER";
-                    if (c.category === "Waterlogging") categoryLabel = "WATERLOGGING";
-                    else if (c.category === "Road Repair") categoryLabel = "BROKEN ROAD";
-                    else if (c.category === "Waste Management") categoryLabel = "WASTE DISPOSAL";
-                    else if (c.category === "Electricity") categoryLabel = "STREETLIGHT";
-
-                    // Map status overlays
-                    let statusOverlayClass = "bg-slate-500/80 text-white";
-                    let statusText = "PENDING";
-                    if (c.status === "resolved") {
-                      statusOverlayClass = "bg-emerald-600/90 text-white";
-                      statusText = "RESOLVED";
-                    } else if (c.status === "in_progress") {
-                      statusOverlayClass = "bg-amber-600/90 text-white";
-                      statusText = "IN PROGRESS";
-                    } else if (c.status === "assigned") {
-                      statusOverlayClass = "bg-blue-600/90 text-white";
-                      statusText = "ASSIGNED";
-                    }
-
-                    const formattedDate = new Date(c.created_at).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric"
-                    });
-
-                    return (
-                      <div
-                        key={c.id}
-                        onClick={() => router.push(`/complaints/${c.id}`)}
-                        className="bg-white rounded-[1.5rem] border border-gray-150 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.005] cursor-pointer flex flex-col justify-between min-h-[350px]"
-                      >
-                        {/* Card Image area with Status Overlay */}
-                        <div className="h-44 w-full relative bg-slate-100 border-b border-gray-100 shrink-0">
-                          <img
-                            src={Array.isArray(c.image_url) && c.image_url.length > 0 ? c.image_url[0] : (typeof c.image_url === "string" ? c.image_url : "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop")}
-                            alt={c.category}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className={`absolute top-4 left-4 px-3.5 py-1.5 rounded-full text-[9px] font-black tracking-widest uppercase shadow-sm ${statusOverlayClass}`}>
-                            {statusText}
-                          </div>
-                        </div>
-
-                        {/* Content block */}
-                        <div className="p-5 flex-1 flex flex-col justify-between">
-                          <div className="space-y-2">
-                            <div className="flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                              <span className="bg-slate-100 px-2 py-0.5 rounded text-gray-650">{categoryLabel}</span>
-                              <span>&bull;</span>
-                              <span>{formattedDate}</span>
-                            </div>
-                            <h3 className="text-base font-bold text-gray-800 tracking-tight line-clamp-1 leading-snug">
-                              {c.category} Issue - {c.citizen_name || "Citizen Report"}
-                            </h3>
-                            <p className="text-gray-500 text-xs font-semibold leading-relaxed line-clamp-2">
-                              {c.description}
-                            </p>
-                          </div>
-
-                          {/* Card footer */}
-                          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-50 text-[11px] font-bold text-gray-500">
-                            <span className="flex items-center">
-                              <MapPin className="w-3.5 h-3.5 mr-1 text-gray-400" />
-                              {c.latitude && c.longitude ? `${parseFloat(c.latitude).toFixed(4)}, ${parseFloat(c.longitude).toFixed(4)}` : "Chattogram Area"}
-                            </span>
-                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* View Report History Card (Dashed Border Card at index 5) */}
-                  <div
-                    onClick={() => router.push("/complaints")}
-                    className="bg-slate-50/50 hover:bg-slate-50 rounded-[1.5rem] border-2 border-dashed border-gray-250 flex flex-col items-center justify-center p-6 text-center shadow-inner cursor-pointer transition-all duration-300 hover:scale-[1.005] hover:border-brand-teal/50 group min-h-[350px]"
-                  >
-                    <div className="p-4 bg-white text-gray-500 rounded-full shadow-sm mb-4 transition-colors group-hover:text-brand-teal">
-                      <RotateCcw className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-sm font-bold text-gray-800 tracking-tight">
-                      View Report History
-                    </h3>
-                    <p className="text-gray-400 text-[11px] font-semibold mt-1.5 max-w-[200px] leading-relaxed">
-                      Access all your {totalCount} previous submissions and their full timelines.
+                {complaints.length === 0 ? (
+                  <div className="bg-white rounded-3xl border border-gray-150 py-16 px-6 text-center shadow-sm w-full col-span-full">
+                    <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4 stroke-[1.5]" />
+                    <h3 className="text-lg font-bold text-gray-900">No complaints reported yet</h3>
+                    <p className="text-gray-500 text-xs mt-2 max-w-sm mx-auto leading-relaxed">
+                      You haven't submitted any complaints. Once you report an issue, it will appear here.
                     </p>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full col-span-full">
+                      {paginatedComplaints.map((c) => {
+                        // Map database categories to caps labels
+                        let categoryLabel = "OTHER";
+                        if (c.category === "Waterlogging") categoryLabel = "WATERLOGGING";
+                        else if (c.category === "Road Repair") categoryLabel = "BROKEN ROAD";
+                        else if (c.category === "Waste Management") categoryLabel = "WASTE DISPOSAL";
+                        else if (c.category === "Electricity") categoryLabel = "STREETLIGHT";
+
+                        // Map status overlays
+                        let statusOverlayClass = "bg-slate-500/80 text-white";
+                        let statusText = "PENDING";
+                        if (c.status === "resolved") {
+                          statusOverlayClass = "bg-emerald-600/90 text-white";
+                          statusText = "RESOLVED";
+                        } else if (c.status === "in_progress") {
+                          statusOverlayClass = "bg-amber-600/90 text-white";
+                          statusText = "IN PROGRESS";
+                        } else if (c.status === "assigned") {
+                          statusOverlayClass = "bg-blue-600/90 text-white";
+                          statusText = "ASSIGNED";
+                        }
+
+                        const formattedDate = new Date(c.created_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric"
+                        });
+
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => router.push(`/complaints/${c.id}`)}
+                            className="bg-white rounded-[1.5rem] border border-gray-150 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.005] cursor-pointer flex flex-col justify-between min-h-[350px]"
+                          >
+                            {/* Card Image area with Status Overlay */}
+                            <div className="h-44 w-full relative bg-slate-100 border-b border-gray-100 shrink-0">
+                              <img
+                                src={Array.isArray(c.image_url) && c.image_url.length > 0 ? c.image_url[0] : (typeof c.image_url === "string" ? c.image_url : "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop")}
+                                alt={c.category}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className={`absolute top-4 left-4 px-3.5 py-1.5 rounded-full text-[9px] font-black tracking-widest uppercase shadow-sm ${statusOverlayClass}`}>
+                                {statusText}
+                              </div>
+                            </div>
+
+                            {/* Content block */}
+                            <div className="p-5 flex-1 flex flex-col justify-between">
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                  <span className="bg-slate-100 px-2 py-0.5 rounded text-gray-650">{categoryLabel}</span>
+                                  <span>&bull;</span>
+                                  <span>{formattedDate}</span>
+                                </div>
+                                <h3 className="text-base font-bold text-gray-800 tracking-tight line-clamp-1 leading-snug">
+                                  {c.category} Issue - {c.citizen_name || "Citizen Report"}
+                                </h3>
+                                <p className="text-gray-500 text-xs font-semibold leading-relaxed line-clamp-2">
+                                  {c.description}
+                                </p>
+                              </div>
+
+                              {/* Card footer */}
+                              <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-50 text-[11px] font-bold text-gray-500">
+                                <span className="flex items-center">
+                                  <MapPin className="w-3.5 h-3.5 mr-1 text-gray-400" />
+                                  {c.latitude && c.longitude ? `${parseFloat(c.latitude).toFixed(4)}, ${parseFloat(c.longitude).toFixed(4)}` : "Chattogram Area"}
+                                </span>
+                                <ArrowRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* View Report History Card (Dashed Border Card at index 5) */}
+                      <div
+                        onClick={() => router.push("/complaints")}
+                        className="bg-slate-50/50 hover:bg-slate-50 rounded-[1.5rem] border-2 border-dashed border-gray-250 flex flex-col items-center justify-center p-6 text-center shadow-inner cursor-pointer transition-all duration-300 hover:scale-[1.005] hover:border-brand-teal/50 group min-h-[350px]"
+                      >
+                        <div className="p-4 bg-white text-gray-500 rounded-full shadow-sm mb-4 transition-colors group-hover:text-brand-teal">
+                          <RotateCcw className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-sm font-bold text-gray-800 tracking-tight">
+                          View Report History
+                        </h3>
+                        <p className="text-gray-400 text-[11px] font-semibold mt-1.5 max-w-[200px] leading-relaxed">
+                          Access all your {totalCount} previous submissions and their full timelines.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Pagination controls */}
+                    {complaints.length > itemsPerPage && (
+                      <div className="w-full flex justify-center mt-6">
+                        <Pagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={(page) => {
+                            setCurrentPage(page);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </>
           )}

@@ -54,7 +54,7 @@ export default function AdminDashboardPage() {
       ]);
 
       setProfile(profileData.user ?? profileData);
-      setComplaints(complaintData.complaints ?? []);
+      setComplaints(complaintData.complaints ?? complaintData.complains ?? []);
       setDepartments(deptData.departments ?? deptData ?? []);
 
       // Workers only available for dept_admin / super_admin — try but don't crash

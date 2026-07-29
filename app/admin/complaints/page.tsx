@@ -66,7 +66,7 @@ export default function AdminComplaintsPage() {
       setError(null);
       const data = await fetchComplaints();
       if (data.success) {
-        const rawList = data.complaints ?? [];
+        const rawList = data.complaints ?? data.complains ?? [];
         const mappedList: ComplaintItem[] = rawList.map((c: any) => ({
           id: c.id,
           category: c.category || "Other",

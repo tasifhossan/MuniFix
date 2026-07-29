@@ -77,7 +77,7 @@ export default function FieldWorkerDashboard() {
         fetchWorkerTasks(),
         fetchMyProfile(),
       ]);
-      setTasks(taskData.tasks ?? taskData.complaints ?? []);
+      setTasks(taskData.tasks ?? taskData.complaints ?? taskData.complains ?? []);
       setProfile(profileData.user ?? profileData);
     } catch (err: any) {
       setError(err.message);

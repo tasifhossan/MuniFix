@@ -17,7 +17,7 @@ export default function ReportsPage() {
         setLoading(true);
         const data = await fetchComplaints();
         if (data.success) {
-          setComplaints(data.complaints);
+          setComplaints(data.complaints ?? data.complains ?? []);
         }
       } catch (err: any) {
         setError(err.message);
