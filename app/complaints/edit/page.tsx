@@ -333,10 +333,9 @@ export default function EditComplaintPage() {
 
       </div>
 
-      {/* Global Simple Footer */}
       <footer className="bg-slate-100/50 border-t border-slate-200 mt-auto select-none">
         <div className="max-w-[1200px] w-full mx-auto px-6 sm:px-8 py-6 flex flex-col md:flex-row justify-between items-center text-xs font-semibold text-slate-500 gap-4">
-          <span>&copy; 2024 MuniFix Ctg. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <a href="#departments" className="hover:text-[#005c55] transition-colors">Departments</a>
             <a href="#privacy" className="hover:text-[#005c55] transition-colors">Privacy Policy</a>

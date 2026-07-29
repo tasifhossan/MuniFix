@@ -136,7 +136,7 @@ export default function ForgotPasswordPage() {
 
       {/* Bottom Footer */}
       <footer className="max-w-7xl mx-auto w-full text-center space-y-2 py-4">
-        <p className="text-xs text-gray-400 font-medium">© 2024 MuniFix Ctg. All rights reserved.</p>
+        <p className="text-xs text-gray-400 font-medium">© {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</p>
         <div className="flex items-center justify-center space-x-6 text-[11px] text-gray-500 font-bold">
           <Link href="/privacy" className="hover:text-brand-teal transition-colors">Privacy Policy</Link>
           <span className="w-1.5 h-1.5 bg-gray-300 rounded-full" />

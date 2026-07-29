@@ -252,7 +252,7 @@ export default function AdminUsersPage() {
             </a>
           </div>
           <span className="select-none text-slate-400 mt-1">
-            &copy; 2024 MuniFix Ctg. All rights reserved.
+            &copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.
           </span>
         </footer>
       </div>

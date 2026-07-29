@@ -129,7 +129,7 @@ export default function NewComplaintPage() {
       if (res.success) {
         const rawId = res.complaint?.id;
         const shortId = typeof rawId === "string" && rawId.includes("-") ? rawId.split("-")[0] : (rawId || Math.floor(1000 + Math.random() * 9000));
-        setReportId(`#CTG-2024-${shortId}`);
+        setReportId(`#CTG-${new Date().getFullYear()}-${shortId}`);
         setAiCategory(res.complaint?.ai_category || res.complaint?.category || null);
         setAiPriority(res.complaint?.ai_priority || res.complaint?.priority || null);
         setAiConfidence(res.complaint?.ai_confidence_score !== undefined && res.complaint?.ai_confidence_score !== null ? parseFloat(res.complaint.ai_confidence_score) : null);
@@ -337,10 +337,9 @@ export default function NewComplaintPage() {
 
       </div>
 
-      {/* Global Simple Footer */}
       <footer className="bg-slate-100/50 border-t border-slate-200 mt-auto">
         <div className="max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center text-xs font-semibold text-gray-500 gap-4">
-          <span>&copy; 2024 MuniFix Ctg. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <a href="#departments" className="hover:text-brand-teal transition-colors">Departments</a>
             <a href="#privacy" className="hover:text-brand-teal transition-colors">Privacy Policy</a>

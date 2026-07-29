@@ -50,7 +50,7 @@ export default function DashboardFooter() {
 
         {/* Bottom Row */}
         <div className="flex flex-col sm:flex-row items-center justify-between pt-8 text-xs text-slate-400 font-medium gap-4">
-          <span>&copy; 2024 MuniFix Ctg. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
           <span className="text-slate-500 font-semibold">
             Official platform for <a href="https://ccc.gov.bd" target="_blank" rel="noreferrer" className="text-slate-800 hover:text-brand-teal font-bold transition-colors">Chattogram City Corporation</a>
           </span>
