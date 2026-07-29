@@ -29,7 +29,7 @@ export default function NewComplaintPage() {
   const [detectedArea, setDetectedArea] = useState("Chattogram, Bangladesh");
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   
   // Form submission state
@@ -115,9 +115,16 @@ export default function NewComplaintPage() {
       fd.append("description", description);
       if (latitude !== null) fd.append("latitude", String(latitude));
       if (longitude !== null) fd.append("longitude", String(longitude));
-      if (selectedFile) {
-        fd.append("images", selectedFile);
+      
+      if (selectedFiles.length > 6) {
+        setError("You can upload a maximum of 6 images.");
+        setIsSubmitting(false);
+        return;
       }
+
+      selectedFiles.forEach((file) => {
+        fd.append("images", file);
+      });
       const res = await createComplaint(fd);
       if (res.success) {
         const rawId = res.complaint?.id;
@@ -183,7 +190,7 @@ export default function NewComplaintPage() {
           <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-gray-150 p-6 sm:p-8 shadow-sm space-y-8">
             
             {/* Evidence Upload */}
-            <EvidenceUpload onFileSelect={setSelectedFile} />
+            <EvidenceUpload onFilesSelect={setSelectedFiles} />
 
             {/* Description field */}
             <div className="space-y-2">

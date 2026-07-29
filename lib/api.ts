@@ -133,7 +133,7 @@ export async function deleteComplaint(id: string) {
 
 export async function editComplaint(
   id: string,
-  payload: { description: string; category: string; latitude?: number; longitude?: number }
+  payload: { description?: string; category?: string; latitude?: number; longitude?: number }
 ) {
   const headers = getHeaders();
   const res = await fetch(`${API_BASE_URL}/complain/${id}`, {
@@ -201,4 +201,11 @@ export async function fetchAdminWorkers() {
     throw new Error(errorData.message || "Failed to fetch workers");
   }
   return res.json();
+}
+
+export async function updateComplaint(
+  id: string,
+  payload: { description?: string; category?: string; latitude?: number; longitude?: number }
+) {
+  return editComplaint(id, payload);
 }

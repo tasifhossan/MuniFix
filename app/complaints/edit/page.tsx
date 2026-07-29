@@ -51,10 +51,15 @@ export default function EditComplaintPage() {
         const res = await fetchComplaintById(id);
         if (res.success) {
           const c = res.complaint;
+          if (c.status !== "pending") {
+            alert("Only pending complaints can be edited.");
+            router.replace(`/complaints/${c.id}`);
+            return;
+          }
           setCategory(c.category);
           setDescription(c.description);
           setLocationDetail(c.latitude && c.longitude ? `${parseFloat(c.latitude).toFixed(6)}, ${parseFloat(c.longitude).toFixed(6)}` : "Chattogram Area");
-          setIsLocked(c.status !== "pending");
+          setIsLocked(false);
         }
       } catch (err: any) {
         setError(err.message || "Failed to load complaint.");
@@ -63,16 +68,31 @@ export default function EditComplaintPage() {
       }
     }
     loadComplaint();
-  }, [id]);
+  }, [id, router]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLocked) return;
     try {
       setLoading(true);
+      
+      let lat: number | undefined;
+      let lng: number | undefined;
+      const parts = locationDetail.split(",");
+      if (parts.length === 2) {
+        const parsedLat = parseFloat(parts[0].trim());
+        const parsedLng = parseFloat(parts[1].trim());
+        if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+          lat = parsedLat;
+          lng = parsedLng;
+        }
+      }
+
       const res = await editComplaint(id, {
         category,
         description,
+        latitude: lat,
+        longitude: lng
       });
       if (res.success) {
         alert("Complaint updated successfully!");
