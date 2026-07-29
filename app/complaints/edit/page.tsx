@@ -28,6 +28,7 @@ export default function EditComplaintPage() {
   const [category, setCategory] = useState("Other");
   const [locationDetail, setLocationDetail] = useState("");
   const [description, setDescription] = useState("");
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -51,10 +52,16 @@ export default function EditComplaintPage() {
         const res = await fetchComplaintById(id);
         if (res.success) {
           const c = res.complaint;
+          if (c.status !== "pending") {
+            alert("Only pending complaints can be edited.");
+            router.replace(`/complaints/${c.id}`);
+            return;
+          }
           setCategory(c.category);
           setDescription(c.description);
           setLocationDetail(c.latitude && c.longitude ? `${parseFloat(c.latitude).toFixed(6)}, ${parseFloat(c.longitude).toFixed(6)}` : "Chattogram Area");
-          setIsLocked(c.status !== "pending");
+          setExistingImages(Array.isArray(c.image_url) ? c.image_url : (c.image_url ? [c.image_url] : []));
+          setIsLocked(false);
         }
       } catch (err: any) {
         setError(err.message || "Failed to load complaint.");
@@ -63,16 +70,31 @@ export default function EditComplaintPage() {
       }
     }
     loadComplaint();
-  }, [id]);
+  }, [id, router]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLocked) return;
     try {
       setLoading(true);
+      
+      let lat: number | undefined;
+      let lng: number | undefined;
+      const parts = locationDetail.split(",");
+      if (parts.length === 2) {
+        const parsedLat = parseFloat(parts[0].trim());
+        const parsedLng = parseFloat(parts[1].trim());
+        if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+          lat = parsedLat;
+          lng = parsedLng;
+        }
+      }
+
       const res = await editComplaint(id, {
         category,
         description,
+        latitude: lat,
+        longitude: lng
       });
       if (res.success) {
         alert("Complaint updated successfully!");
@@ -245,44 +267,24 @@ export default function EditComplaintPage() {
             </div>
 
             {/* Attached media */}
-            <div className="space-y-3">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider select-none">
-                Attached Media (2)
-              </label>
-              <div className="grid grid-cols-3 gap-4 max-w-md">
-                {/* Photo 1 */}
-                <div className="relative aspect-square bg-slate-50 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
-                  <img
-                    src="/pothole.png"
-                    alt="Evidence 1"
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
+            {existingImages.length > 0 && (
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider select-none">
+                  Attached Media ({existingImages.length})
+                </label>
+                <div className="grid grid-cols-3 gap-4 max-w-md">
+                  {existingImages.map((imgUrl, idx) => (
+                    <div key={idx} className="relative aspect-square bg-slate-50 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
+                      <img
+                        src={imgUrl}
+                        alt={`Evidence ${idx + 1}`}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </div>
+                  ))}
                 </div>
-
-                {/* Photo 2 */}
-                <div className="relative aspect-square bg-slate-50 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
-                  <img
-                    src="/street_light.png"
-                    alt="Evidence 2"
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-
-                {/* Add Photo placeholder */}
-                <button
-                  type="button"
-                  disabled={isLocked}
-                  className={`aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 text-slate-400 transition-all select-none ${
-                    isLocked 
-                      ? "border-slate-200 bg-slate-50 cursor-not-allowed" 
-                      : "border-slate-300 hover:border-[#005c55] hover:text-[#005c55] bg-white cursor-pointer active:scale-[0.97]"
-                  }`}
-                >
-                  <Camera className="w-5 h-5 text-current" />
-                  <span className="text-[10px] font-bold">Add</span>
-                </button>
               </div>
-            </div>
+            )}
 
             {/* Divider line */}
             <div className="border-t border-slate-100 pt-5" />

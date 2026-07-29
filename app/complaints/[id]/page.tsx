@@ -51,10 +51,10 @@ export default function ComplaintDetailsPage() {
           title: c.category + " Issue - " + (c.citizen_name || "Citizen Report"),
           description: c.description,
           priority: c.priority === "critical" || c.priority === "high" ? "CRITICAL" : c.priority === "low" ? "LOW" : "MEDIUM",
-          status: c.status === "assigned" ? "Dispatched" : c.status === "in_progress" ? "In Progress" : c.status === "resolved" ? "Resolved" : "Pending Approval",
+          status: c.status === "assigned" ? "Dispatched" : c.status === "in_progress" ? "In Progress" : c.status === "resolved" ? "Resolved" : c.status === "cancelled" ? "Cancelled" : "Pending Approval",
           location: c.latitude && c.longitude ? `${c.latitude}, ${c.longitude}` : "Chattogram City",
           time: `Reported on ${new Date(c.created_at).toLocaleDateString()} • ${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-          image: c.image_url || "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop",
+          image: Array.isArray(c.image_url) && c.image_url.length > 0 ? c.image_url[0] : (typeof c.image_url === "string" ? c.image_url : null),
           category: c.category,
           date: c.created_at,
           reporter: c.citizen_name,
@@ -315,16 +315,35 @@ export default function ComplaintDetailsPage() {
             <div className="lg:col-span-5 bg-white rounded-3xl border border-gray-150 p-5 shadow-sm space-y-5 flex flex-col justify-between print:col-span-5 print:shadow-none">
               
               {complaint.image && (
-                <div className="w-full h-56 relative rounded-2xl overflow-hidden shrink-0 bg-slate-100 shadow-inner border border-gray-100">
-                  <img
-                    src={complaint.image}
-                    alt={complaint.title}
-                    className="w-full h-full object-cover"
-                  />
-                  {/* Overlaid Priority Badge */}
-                  <div className="absolute top-4 right-4">
-                    <Badge type="priority" value={complaint.priority} />
+                <div className="space-y-3 shrink-0">
+                  <div className="w-full h-56 relative rounded-2xl overflow-hidden bg-slate-100 shadow-inner border border-gray-100">
+                    <img
+                      src={complaint.image}
+                      alt={complaint.title}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Overlaid Priority Badge */}
+                    <div className="absolute top-4 right-4">
+                      <Badge type="priority" value={complaint.priority} />
+                    </div>
                   </div>
+
+                  {/* Thumbnail gallery for multiple uploaded images */}
+                  {Array.isArray(complaint.original?.image_url) && complaint.original.image_url.length > 1 && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {complaint.original.image_url.map((imgUrl: string, idx: number) => (
+                        <div 
+                          key={idx} 
+                          onClick={() => setComplaint((prev: any) => ({ ...prev, image: imgUrl }))}
+                          className={`aspect-video rounded-lg overflow-hidden border cursor-pointer hover:border-brand-teal transition-all ${
+                            complaint.image === imgUrl ? "border-brand-teal ring-2 ring-brand-teal/20" : "border-gray-255"
+                          }`}
+                        >
+                          <img src={imgUrl} className="w-full h-full object-cover" alt={`Evidence ${idx + 1}`} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

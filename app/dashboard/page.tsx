@@ -247,7 +247,7 @@ export default function CitizenDashboard() {
                         {/* Card Image area with Status Overlay */}
                         <div className="h-44 w-full relative bg-slate-100 border-b border-gray-100 shrink-0">
                           <img
-                            src={c.image_url || "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop"}
+                            src={Array.isArray(c.image_url) && c.image_url.length > 0 ? c.image_url[0] : (typeof c.image_url === "string" ? c.image_url : "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop")}
                             alt={c.category}
                             className="w-full h-full object-cover"
                           />

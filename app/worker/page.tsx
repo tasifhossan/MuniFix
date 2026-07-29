@@ -243,7 +243,7 @@ export default function FieldWorkerDashboard() {
                         id={task.id}
                         image={
                           (task.images && task.images[0]) ??
-                          task.image_url ??
+                          (Array.isArray(task.image_url) ? task.image_url[0] : task.image_url) ??
                           categoryImage(task.category)
                         }
                         title={task.category ? `${task.category} Issue` : task.title ?? "Assigned Task"}
