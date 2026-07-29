@@ -1,10 +1,65 @@
-import { parseJwt } from "./auth";
+export interface ActiveProfile {
+  id: string;
+  name: string;
+  role: 'citizen' | 'field_worker' | 'dept_admin' | 'super_admin';
+  email: string;
+  department_id?: number;
+}
+
+export const profiles: ActiveProfile[] = [
+  {
+    id: "f19d2bba-ea7f-4422-b5e1-55c3272e276b",
+    name: "John Citizen (Citizen)",
+    role: "citizen",
+    email: "john@gmail.com"
+  },
+  {
+    id: "a871cb2b-7c7f-4522-a9e1-66e3c3272e1d",
+    name: "Waste Admin (Dept Admin)",
+    role: "dept_admin",
+    email: "wasteadmin@munifix.gov",
+    department_id: 3
+  },
+  {
+    id: "e402bba2-da7f-4122-83e1-77d3c3272e2e",
+    name: "Roads Admin (Dept Admin)",
+    role: "dept_admin",
+    email: "roadsadmin@munifix.gov",
+    department_id: 2
+  },
+  {
+    id: "c59d9c2e-4b6b-4e12-87ad-d345ff4b10b0",
+    name: "Super Admin (Super Admin)",
+    role: "super_admin",
+    email: "admin@munifix.gov"
+  }
+];
+
+export function getActiveProfile(): ActiveProfile {
+  if (typeof window === "undefined") return profiles[0];
+  const stored = localStorage.getItem("munifix_active_profile");
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      const matched = profiles.find(p => p.id === parsed.id);
+      if (matched) return matched;
+    } catch (e) {}
+  }
+  return profiles[0];
+}
+
+export function setActiveProfile(profile: ActiveProfile) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("munifix_active_profile", JSON.stringify(profile));
+    window.dispatchEvent(new Event("munifix_profile_changed"));
+  }
+}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-function getHeaders(): Record<string, string> {
+export function getHeaders(): Record<string, string> {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("munifix_authtoken");
+    const token = localStorage.getItem("token") || localStorage.getItem("munifix_authtoken");
     if (token) {
       return {
         "Authorization": `Bearer ${token}`
@@ -21,7 +76,6 @@ export async function fetchComplaints(filters: { category?: string; priority?: s
   if (filters.status) params.append("status", filters.status.toLowerCase());
 
   const headers = getHeaders();
-  // Call /api/complain instead of /api/complaints
   const res = await fetch(`${API_BASE_URL}/complain?${params.toString()}`, {
     method: "GET",
     headers: {
@@ -36,13 +90,9 @@ export async function fetchComplaints(filters: { category?: string; priority?: s
 }
 
 export async function fetchComplaintById(id: string) {
-  const headers = getHeaders();
-  // Call /api/complain/:id instead of /api/complaints/:id
   const res = await fetch(`${API_BASE_URL}/complain/${id}`, {
     method: "GET",
-    headers: {
-      ...headers,
-    }
+    headers: getHeaders()
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -52,22 +102,15 @@ export async function fetchComplaintById(id: string) {
 }
 
 export async function createComplaint(formData: FormData) {
-  const headers = getHeaders();
-  if (typeof window !== "undefined" && !formData.has("citizen_id")) {
-    const token = localStorage.getItem("munifix_authtoken");
-    if (token) {
-      const decoded = parseJwt(token);
-      if (decoded) {
-        formData.append("citizen_id", decoded.id);
-      }
-    }
+  const profile = getActiveProfile();
+  if (!formData.has("citizen_id")) {
+    formData.append("citizen_id", profile.id);
   }
 
-  // Call /api/complain instead of /api/complaints
   const res = await fetch(`${API_BASE_URL}/complain`, {
     method: "POST",
     headers: {
-      ...headers,
+      ...getHeaders()
     },
     body: formData
   });
@@ -78,33 +121,47 @@ export async function createComplaint(formData: FormData) {
   return res.json();
 }
 
+export async function editComplaint(
+  id: string,
+  payload: { description?: string; category?: string; latitude?: number; longitude?: number }
+) {
+  const res = await fetch(`${API_BASE_URL}/complain/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to edit complaint");
+  }
+  return res.json();
+}
+
+export async function updateComplaint(
+  id: string,
+  payload: { description?: string; category?: string; latitude?: number; longitude?: number }
+) {
+  return editComplaint(id, payload);
+}
+
 export async function updateComplaintStatus(
   id: string, 
   payload: { status: string; notes?: string; worker_id?: string; department_id?: number }
 ) {
-  let changed_by = "";
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("munifix_authtoken");
-    if (token) {
-      const decoded = parseJwt(token);
-      if (decoded) {
-        changed_by = decoded.id;
-      }
-    }
-  }
-
+  const profile = getActiveProfile();
   const body = {
     ...payload,
-    changed_by
+    changed_by: profile.id
   };
 
-  const headers = getHeaders();
-  // Call /api/complain/:id/status instead of /api/complaints/:id/status
   const res = await fetch(`${API_BASE_URL}/complain/${id}/status`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      ...headers
+      ...getHeaders()
     },
     body: JSON.stringify(body)
   });
@@ -116,13 +173,9 @@ export async function updateComplaintStatus(
 }
 
 export async function deleteComplaint(id: string) {
-  const headers = getHeaders();
-  // Call /api/complain/:id instead of /api/complaints/:id
   const res = await fetch(`${API_BASE_URL}/complain/${id}`, {
     method: "DELETE",
-    headers: {
-      ...headers,
-    }
+    headers: getHeaders()
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -131,98 +184,60 @@ export async function deleteComplaint(id: string) {
   return res.json();
 }
 
-export async function editComplaint(
-  id: string,
-  payload: { description?: string; category?: string; latitude?: number; longitude?: number }
-) {
+export async function searchComplaints(params: {
+  q?: string;
+  category?: string;
+  priority?: string;
+  status?: string;
+  date?: string;
+}) {
+  const queryParams = new URLSearchParams();
+  if (params.q) queryParams.append("q", params.q);
+  if (params.category) queryParams.append("category", params.category);
+  if (params.priority) queryParams.append("priority", params.priority);
+  if (params.status) queryParams.append("status", params.status);
+  if (params.date) queryParams.append("date", params.date);
+
   const headers = getHeaders();
-  const res = await fetch(`${API_BASE_URL}/complain/${id}`, {
-    method: "PATCH",
+  const res = await fetch(`${API_BASE_URL}/complain/search?${queryParams.toString()}`, {
+    method: "GET",
     headers: {
-      "Content-Type": "application/json",
       ...headers,
-    },
-    body: JSON.stringify(payload),
+    }
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to edit complaint");
+    throw new Error(errorData.message || "Failed to search complaints");
   }
   return res.json();
 }
 
-export async function fetchMyProfile() {
+export async function fetchNotifications() {
   const headers = getHeaders();
-  const res = await fetch(`${API_BASE_URL}/my/profile`, {
+  const res = await fetch(`${API_BASE_URL}/notifications`, {
     method: "GET",
-    headers: { ...headers },
+    headers: {
+      ...headers,
+    }
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to fetch profile");
+    throw new Error(errorData.message || "Failed to fetch notifications");
   }
   return res.json();
 }
 
-export async function fetchWorkerTasks() {
+export async function markNotificationAsRead(id: string) {
   const headers = getHeaders();
-  const res = await fetch(`${API_BASE_URL}/complain/worker/tasks`, {
-    method: "GET",
-    headers: { ...headers },
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to fetch worker tasks");
-  }
-  return res.json();
-}
-
-export async function fetchAdminDepartments() {
-  const headers = getHeaders();
-  const res = await fetch(`${API_BASE_URL}/admin/departments`, {
-    method: "GET",
-    headers: { ...headers },
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to fetch departments");
-  }
-  return res.json();
-}
-
-export async function fetchAdminWorkers() {
-  const headers = getHeaders();
-  const res = await fetch(`${API_BASE_URL}/admin/workers`, {
-    method: "GET",
-    headers: { ...headers },
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to fetch workers");
-  }
-  return res.json();
-}
-
-export async function updateUserRole(userId: string, payload: { role: string; department_id?: number | null }) {
-  const headers = getHeaders();
-  const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/role`, {
+  const res = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
     method: "PATCH",
     headers: {
       ...headers,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
+    }
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to update user role");
+    throw new Error(errorData.message || "Failed to mark notification as read");
   }
   return res.json();
-}
-
-export async function updateComplaint(
-  id: string,
-  payload: { description?: string; category?: string; latitude?: number; longitude?: number }
-) {
-  return editComplaint(id, payload);
 }
