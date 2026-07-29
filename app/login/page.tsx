@@ -1,20 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Mail,
   Lock,
   ArrowRight,
-  ShieldCheck,
-  ChevronRight,
   Activity
 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
+  const { login } = useAuth();
+  const router = useRouter();
+
   const [role, setRole] = useState<"citizen" | "official">("citizen");
   const [formData, setFormData] = useState({
     email: "",
@@ -23,7 +26,18 @@ export default function LoginPage() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const success = params.get("success");
+      if (success) {
+        setSuccessMsg(success);
+      }
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -33,13 +47,19 @@ export default function LoginPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await login(formData.email, formData.password);
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Invalid credentials");
+    } finally {
       setLoading(false);
-      setSubmitted(true);
-    }, 1500);
+    }
   };
 
   // Right column visual sidebar extra content
@@ -59,33 +79,6 @@ export default function LoginPage() {
     </div>
   );
 
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
-        <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl border border-gray-100 text-center space-y-6 animate-fade-in">
-          <div className="w-20 h-20 bg-brand-cyan-bg rounded-full flex items-center justify-center text-brand-cyan-text mx-auto shadow-md">
-            <ShieldCheck className="w-10 h-10" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-gray-900">Signed In Successfully!</h2>
-            <p className="text-gray-500 text-sm">
-              Redirecting you to the MuniFix Ctg dashboard...
-            </p>
-          </div>
-
-          <div className="pt-2">
-            <Link href="/" className="w-full block">
-              <Button variant="primary" className="w-full py-3.5">
-                Go to Home Screen
-                <ChevronRight className="w-4 h-4 ml-1.5" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <AuthLayout
       sidebarTitle="Monitor Municipal Fixes in Real-Time"
@@ -104,6 +97,20 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
+
+        {/* Inline Success Message */}
+        {successMsg && (
+          <div className="p-3 bg-green-50 text-green-700 rounded-xl text-xs font-semibold text-center border border-green-100 mb-5 animate-fade-in">
+            {successMsg}
+          </div>
+        )}
+
+        {/* Inline Error Message */}
+        {error && (
+          <div className="p-3 bg-red-50 text-red-650 rounded-xl text-xs font-semibold text-center border border-red-100 mb-5 animate-fade-in">
+            {error}
+          </div>
+        )}
 
         {/* Role switcher */}
         <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-xl mb-6">
@@ -178,7 +185,7 @@ export default function LoginPage() {
               type="submit"
               loading={loading}
               disabled={!formData.email || !formData.password}
-              className="w-full py-4 text-sm font-semibold rounded-xl"
+              className="w-full py-4 text-sm font-semibold rounded-xl flex items-center justify-center gap-2"
             >
               Sign In <ArrowRight className="w-4 h-4 ml-2" />
             </Button>

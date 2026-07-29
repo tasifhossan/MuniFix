@@ -30,7 +30,7 @@ export default function Footer() {
 
         {/* Row 2 */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400 font-medium">
-          <span>&copy; 2024 MuniFix Ctg. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
           <div className="flex items-center space-x-6">
             <a href="#" className="text-gray-400 hover:text-brand-teal transition-colors" aria-label="Web"><Globe className="w-4.5 h-4.5" /></a>
             <a href="#" className="text-gray-400 hover:text-brand-teal transition-colors" aria-label="Email"><Mail className="w-4.5 h-4.5" /></a>

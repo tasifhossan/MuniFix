@@ -1,4 +1,5 @@
 "use client";
+// NOTE: This page is pending backend support (request-reset/reset-password endpoints are missing).
 
 import React, { useState } from "react";
 import Link from "next/link";

@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Search, Bell, Menu, X, ChevronDown, Globe, Mail, Phone } from "lucide-react";
 import NotificationDropdown, { NotificationItem } from "./NotificationDropdown";
-import { getActiveProfile, setActiveProfile, profiles, ActiveProfile } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavbarProps {
   activeNav?: string;
@@ -20,24 +20,15 @@ interface NavbarProps {
 export default function Navbar({ 
   activeNav = "how-it-works", 
   onNavClick,
-  user,
+  user: userProp,
   isDashboard = false,
 }: NavbarProps) {
+  const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [activeProfile, setActiveProfileState] = useState<ActiveProfile>(getActiveProfile());
-
-  const handleProfileChange = (profile: ActiveProfile) => {
-    setActiveProfile(profile);
-    setActiveProfileState(profile);
-    setProfileDropdownOpen(false);
-    if (typeof window !== "undefined") {
-      window.location.reload();
-    }
-  };
 
   // Mock live notifications for MuniFix Ctg matching the screenshot
   const [notifications, setNotifications] = useState<NotificationItem[]>([
@@ -98,63 +89,26 @@ export default function Navbar({
                 { id: "about", label: "About", href: "#about" },
                 { id: "contact", label: "Contact", href: "#contact" },
               ]
-          ).map((item) => {
-            const isActive = activeNav === item.id;
-            return (
-              <Link
-                key={item.id}
-                href={item.href}
-                onClick={(e) => {
-                  if (!(user || isDashboard) && onNavClick) {
-                    e.preventDefault();
-                    handleNavClick(item.id);
-                  }
-                }}
-                className={`transition-all duration-200 py-2 relative ${
-                  isActive
-                    ? "text-[#005c55] font-semibold"
-                    : "text-gray-500 hover:text-[#005c55]"
-                }`}
-              >
-                {item.label}
-                {isActive && (
-                  <span className="absolute bottom-0 left-3 right-3 h-[3px] bg-[#005c55] rounded-full" />
-                )}
-              </Link>
-            );
-          })}
+          ).map((item) => (
+            <Link
+              key={item.id}
+              href={item.href}
+              onClick={() => handleNavClick(item.id)}
+              className={`transition-all duration-200 py-2 relative ${
+                activeNav === item.id ? "text-[#005c55] font-extrabold" : "text-gray-500 hover:text-[#005c55]"
+              }`}
+            >
+              {item.label}
+              {activeNav === item.id && (
+                <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#005c55] rounded-full" />
+              )}
+            </Link>
+          ))}
         </nav>
 
-        {/* Right Action Icons & Buttons */}
-        <div className="hidden md:flex items-center space-x-5">
-          {/* Search Toggle */}
-          <div className="relative">
-            {searchOpen ? (
-              <div className="flex items-center bg-gray-50 border border-slate-200 rounded-full px-3 py-1.5 transition-all duration-300 w-64">
-                <input
-                  type="text"
-                  placeholder="Search reports or wards..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent border-none text-sm outline-none w-full text-gray-700 placeholder-gray-405"
-                  autoFocus
-                />
-                <button onClick={() => setSearchOpen(false)} className="text-gray-400 hover:text-gray-600 ml-1">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="text-slate-600 hover:text-[#005c55] p-2 rounded-full hover:bg-slate-50 transition-colors cursor-pointer"
-                aria-label="Search"
-              >
-                <Search className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-
-          {/* Notification Toggle */}
+        {/* Right Nav Options */}
+        <div className="hidden md:flex items-center space-x-6">
+          {/* Notification Button */}
           <div className="relative">
             <button
               onClick={() => setNotificationsOpen(!notificationsOpen)}
@@ -177,67 +131,43 @@ export default function Navbar({
             )}
           </div>
 
-          {/* Active Testing Profile Switcher */}
-          <div className="relative">
-            <button
-              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center space-x-2 border border-teal-100 hover:border-brand-teal bg-teal-50/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-gray-700 select-none cursor-pointer"
-            >
-              <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
-              <span>{activeProfile.name}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400 stroke-[2.5px]" />
-            </button>
-
-            {profileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-150 rounded-2xl shadow-xl z-50 p-2 animate-fade-in animate-duration-150">
-                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-3.5 py-1.5 border-b border-gray-100 mb-1">
-                  Select User Context
-                </div>
-                {profiles.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => handleProfileChange(p)}
-                    className={`w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between ${
-                      activeProfile.id === p.id ? "bg-teal-50/70 text-brand-teal font-bold" : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span>{p.name}</span>
-                    {activeProfile.id === p.id && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Auth profile avatar (if logged in) or buttons */}
+          {/* Real User Profile / Dropdown */}
           {user ? (
-            <>
-              <div className="w-[1px] h-6 bg-slate-200" />
-              <div className="flex items-center space-x-3 cursor-pointer">
-                <div className="relative w-9 h-9 rounded-full overflow-hidden border border-slate-200 shadow-sm shrink-0">
-                  <img
-                    src={user.avatar}
-                    alt={user.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <span className="text-sm font-bold text-slate-800 hover:text-[#005c55] transition-colors">
-                  {user.name}
-                </span>
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <button
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex items-center space-x-2 border border-teal-100 hover:border-brand-teal bg-teal-50/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-gray-700 select-none cursor-pointer"
+                >
+                  <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
+                  <span>{user.name || user.email} ({user.role})</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400 stroke-[2.5px]" />
+                </button>
+
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-150 rounded-2xl shadow-xl z-50 p-2 animate-fade-in animate-duration-150">
+                    <Link
+                      href="/settings"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-colors hover:bg-gray-50 text-gray-700 flex items-center"
+                    >
+                      Settings
+                    </Link>
+                    <button
+                      onClick={async () => {
+                        setProfileDropdownOpen(false);
+                        await logout();
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-colors hover:bg-red-50 text-red-600 flex items-center cursor-pointer"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
-            </>
-          ) : isDashboard ? (
-            <Link href="/settings" className="relative block shrink-0">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop"
-                className="w-8 h-8 rounded-full border border-slate-200 hover:border-[#005c55] transition-all duration-200"
-                alt="User Profile"
-              />
-            </Link>
+            </div>
           ) : (
-            <>
+            <div className="flex items-center space-x-3">
               <Link
                 href="/login"
                 className="text-sm font-semibold text-gray-700 hover:text-[#005c55] transition-all duration-200"
@@ -250,7 +180,7 @@ export default function Navbar({
               >
                 Register
               </Link>
-            </>
+            </div>
           )}
         </div>
 
@@ -278,9 +208,9 @@ export default function Navbar({
           {user ? (
             <div className="flex items-center gap-3 py-2 border-b border-slate-100">
               <div className="w-9 h-9 rounded-full overflow-hidden border border-slate-200 shrink-0">
-                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop" alt={user.name} className="w-full h-full object-cover" />
               </div>
-              <span className="text-sm font-bold text-slate-800">{user.name}</span>
+              <span className="text-sm font-bold text-slate-800">{user.name || user.email}</span>
             </div>
           ) : isDashboard ? (
             <Link
