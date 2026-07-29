@@ -31,10 +31,10 @@ export default function SuccessModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop overlay with blur */}
       <div 
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs animate-fade-in"
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
 
@@ -59,20 +59,20 @@ export default function SuccessModal({
         </div>
 
         {/* Report Metadata box */}
-        <div className="w-full bg-[#f8fafc] border border-slate-150 rounded-2xl p-4 sm:p-5 flex justify-between items-center text-left">
-          <div>
+        <div className="w-full bg-[#f8fafc] border border-slate-150 rounded-2xl p-4 sm:p-5 flex justify-between items-center text-left gap-4">
+          <div className="min-w-0 flex-1">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">
               Report ID
             </span>
-            <span className="text-gray-800 font-extrabold text-sm sm:text-base tracking-tight">
+            <span className="text-gray-800 font-extrabold text-xs sm:text-sm tracking-tight block break-all font-mono">
               {reportId}
             </span>
           </div>
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">
               Expected Response
             </span>
-            <span className="text-brand-teal font-extrabold text-sm sm:text-base tracking-tight">
+            <span className="text-brand-teal font-extrabold text-xs sm:text-sm tracking-tight block">
               {expectedResponse}
             </span>
           </div>

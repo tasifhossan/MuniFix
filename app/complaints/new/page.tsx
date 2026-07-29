@@ -120,7 +120,9 @@ export default function NewComplaintPage() {
       }
       const res = await createComplaint(fd);
       if (res.success) {
-        setReportId(`#CTG-2024-${res.complaint?.id || Math.floor(1000 + Math.random() * 9000)}`);
+        const rawId = res.complaint?.id;
+        const shortId = typeof rawId === "string" && rawId.includes("-") ? rawId.split("-")[0] : (rawId || Math.floor(1000 + Math.random() * 9000));
+        setReportId(`#CTG-2024-${shortId}`);
         setAiCategory(res.complaint?.ai_category || res.complaint?.category || "Other");
         setAiPriority(res.complaint?.ai_priority || res.complaint?.priority || "medium");
         setAiConfidence(res.complaint?.ai_confidence_score ? parseFloat(res.complaint.ai_confidence_score) : 80.0);
