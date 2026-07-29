@@ -30,7 +30,40 @@ export default function Navbar({
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [activeProfile, setActiveProfileState] = useState<ActiveProfile>(getActiveProfile());
 
-  const handleProfileChange = (profile: ActiveProfile) => {
+  const handleProfileChange = async (profile: ActiveProfile) => {
+    try {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const res = await fetch(`${API_BASE_URL}/auth/signin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: profile.email,
+          password: "password123", // Default testing password for seeded database users
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.authtoken) {
+          localStorage.setItem("token", data.authtoken);
+          localStorage.setItem("munifix_authtoken", data.authtoken);
+          localStorage.setItem("munifix_refresh_token", data.refreshToken);
+          localStorage.setItem(
+            "user",
+            JSON.stringify({
+              id: data.users.id,
+              email: data.users.email,
+              role: profile.role,
+              name: profile.name,
+            })
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Failed to automatically authenticate active profile:", err);
+    }
+
     setActiveProfile(profile);
     setActiveProfileState(profile);
     setProfileDropdownOpen(false);

@@ -241,3 +241,72 @@ export async function markNotificationAsRead(id: string) {
   }
   return res.json();
 }
+
+export async function fetchMyProfile() {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/my/profile`, {
+    method: "GET",
+    headers: { ...headers },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch profile");
+  }
+  return res.json();
+}
+
+export async function fetchWorkerTasks() {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/complain/worker/tasks`, {
+    method: "GET",
+    headers: { ...headers },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch worker tasks");
+  }
+  return res.json();
+}
+
+export async function fetchAdminDepartments() {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/admin/departments`, {
+    method: "GET",
+    headers: { ...headers },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch departments");
+  }
+  return res.json();
+}
+
+export async function fetchAdminWorkers() {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/admin/workers`, {
+    method: "GET",
+    headers: { ...headers },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch workers");
+  }
+  return res.json();
+}
+
+export async function updateUserRole(userId: string, payload: { role: string; department_id?: number | null }) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/role`, {
+    method: "PATCH",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update user role");
+  }
+  return res.json();
+}
