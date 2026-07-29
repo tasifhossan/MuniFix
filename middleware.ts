@@ -37,10 +37,17 @@ export function middleware(request: NextRequest) {
         if (pathname.startsWith("/admin") || pathname.startsWith("/worker") || pathname === "/dashboard") {
           return NextResponse.redirect(new URL("/dashboard/citizen", request.url));
         }
+        // Citizen accessing dept_admin or superadmin specific sub-paths → back to citizen dashboard
+        if (pathname === "/dashboard/admin" || pathname === "/dashboard/superadmin" || pathname === "/dashboard/worker") {
+          return NextResponse.redirect(new URL("/dashboard/citizen", request.url));
+        }
       }
       // Field Worker restrictions & dashboard routing
       if (role === "field_worker") {
         if (pathname.startsWith("/admin") || pathname === "/dashboard") {
+          return NextResponse.redirect(new URL("/dashboard/worker", request.url));
+        }
+        if (pathname === "/dashboard/citizen" || pathname === "/dashboard/admin" || pathname === "/dashboard/superadmin") {
           return NextResponse.redirect(new URL("/dashboard/worker", request.url));
         }
       }
