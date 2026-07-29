@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 
 export interface ComplaintItem {
   id: string; // e.g. "FIX-8842"
@@ -12,6 +12,7 @@ export interface ComplaintItem {
   status: "Pending" | "In Progress" | "Assigned" | "Resolved" | "Under Review";
   dateReported: string; // e.g. "Oct 24, 2024, 09:12 AM"
   thumbnail: string; // e.g. "/water.png"
+  aiConfidence?: number | null;
 }
 
 interface ComplaintsTableProps {
@@ -120,9 +121,17 @@ export default function ComplaintsTable({
 
                 {/* Category */}
                 <td className="py-4.5 px-6 vertical-middle">
-                  <span className="text-sm font-bold text-slate-800 leading-tight">
-                    {item.category}
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-bold text-slate-800 leading-tight">
+                      {item.category}
+                    </span>
+                    {item.aiConfidence !== undefined && item.aiConfidence !== null && item.aiConfidence < 70 && (
+                      <span className="inline-flex items-center gap-1 bg-red-50 text-red-650 px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase max-w-max border border-red-100/60 leading-none">
+                        <AlertTriangle className="w-2.5 h-2.5 text-red-500 shrink-0" />
+                        <span>Needs Manual Review</span>
+                      </span>
+                    )}
+                  </div>
                 </td>
 
                 {/* Department */}

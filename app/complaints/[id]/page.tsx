@@ -353,9 +353,17 @@ export default function ComplaintDetailsPage() {
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pt-0.5">
                     Category
                   </span>
-                  <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-xl text-xs border border-gray-150/40">
-                    {complaint.category}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-xl text-xs border border-gray-150/40">
+                      {complaint.category}
+                    </span>
+                    {complaint.original?.ai_confidence_score !== undefined && parseFloat(complaint.original.ai_confidence_score) < 70 && (
+                      <span className="inline-flex items-center gap-1 bg-red-50 text-red-650 px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase border border-red-100 select-none">
+                        <AlertTriangle className="w-3 h-3 text-red-500" />
+                        <span>Needs Manual Review</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex justify-between items-start gap-4">
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pt-0.5 shrink-0">
@@ -413,6 +421,7 @@ export default function ComplaintDetailsPage() {
           </div>
 
           {/* Admin / Dept Admin operations panel */}
+          {/* TODO: category override endpoint not implemented yet */}
           {user && (user.role === "dept_admin" || user.role === "super_admin") && (
             <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-brand-teal">

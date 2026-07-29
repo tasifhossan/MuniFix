@@ -36,9 +36,9 @@ export default function NewComplaintPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [reportId, setReportId] = useState("");
-  const [aiCategory, setAiCategory] = useState("");
-  const [aiPriority, setAiPriority] = useState("");
-  const [aiConfidence, setAiConfidence] = useState(0);
+  const [aiCategory, setAiCategory] = useState<string | null>(null);
+  const [aiPriority, setAiPriority] = useState<string | null>(null);
+  const [aiConfidence, setAiConfidence] = useState<number | null>(null);
 
   const charLimit = 1000;
 
@@ -130,9 +130,9 @@ export default function NewComplaintPage() {
         const rawId = res.complaint?.id;
         const shortId = typeof rawId === "string" && rawId.includes("-") ? rawId.split("-")[0] : (rawId || Math.floor(1000 + Math.random() * 9000));
         setReportId(`#CTG-2024-${shortId}`);
-        setAiCategory(res.complaint?.ai_category || res.complaint?.category || "Other");
-        setAiPriority(res.complaint?.ai_priority || res.complaint?.priority || "medium");
-        setAiConfidence(res.complaint?.ai_confidence_score ? parseFloat(res.complaint.ai_confidence_score) : 80.0);
+        setAiCategory(res.complaint?.ai_category || res.complaint?.category || null);
+        setAiPriority(res.complaint?.ai_priority || res.complaint?.priority || null);
+        setAiConfidence(res.complaint?.ai_confidence_score !== undefined && res.complaint?.ai_confidence_score !== null ? parseFloat(res.complaint.ai_confidence_score) : null);
         setIsSubmitted(true);
       }
     } catch (err: any) {
@@ -315,10 +315,17 @@ export default function NewComplaintPage() {
             isOpen={isSubmitted}
             onClose={handleCloseModal}
             reportId={reportId}
-            description={`Our AI system auto-categorized this report as "${aiCategory}" with "${aiPriority}" priority (Confidence: ${aiConfidence.toFixed(1)}%). You can track details in your dashboard.`}
+            description={
+              aiCategory && aiPriority
+                ? `Your report has been auto-routed and processed by our municipal AI category system.`
+                : `Your report has been logged and queued for manual categorization by a department moderator.`
+            }
             expectedResponse={aiPriority === "critical" ? "24 Hours" : aiPriority === "high" ? "48 Hours" : "3 Days"}
             onPrimaryAction={handleViewDashboard}
             onSecondaryAction={handleSubmitAnother}
+            aiCategory={aiCategory}
+            aiPriority={aiPriority}
+            aiConfidence={aiConfidence}
           />
         </div>
 

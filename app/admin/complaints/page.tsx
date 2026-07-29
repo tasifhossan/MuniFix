@@ -27,6 +27,7 @@ export default function AdminComplaintsPage() {
       status: "In Progress",
       dateReported: "Oct 24, 2024, 09:12 AM",
       thumbnail: "/water.png",
+      aiConfidence: 95.0,
     },
     {
       id: "FIX-8841",
@@ -37,6 +38,7 @@ export default function AdminComplaintsPage() {
       status: "Pending",
       dateReported: "Oct 23, 2024, 04:45 PM",
       thumbnail: "/garbage.png",
+      aiConfidence: 55.0,
     },
     {
       id: "FIX-8839",
