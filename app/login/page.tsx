@@ -55,13 +55,13 @@ export default function LoginPage() {
     try {
       const role = await login(formData.email, formData.password);
       if (role === "citizen") {
-        router.push("/dashboard/citizen");
+        router.push("/dashboard");
       } else if (role === "field_worker") {
-        router.push("/dashboard/worker");
+        router.push("/worker");
       } else if (role === "dept_admin") {
-        router.push("/dashboard/admin");
+        router.push("/admin");
       } else if (role === "super_admin") {
-        router.push("/dashboard/superadmin");
+        router.push("/admin");
       } else {
         router.push("/dashboard");
       }
