@@ -56,7 +56,7 @@ export default function ComplaintsPage() {
             status: c.status === "assigned" ? "Dispatched" : c.status === "in_progress" ? "In Progress" : c.status === "resolved" ? "Resolved" : "Pending Approval",
             location: c.latitude && c.longitude ? `${c.latitude}, ${c.longitude}` : "Chattogram City",
             time: `Reported on ${new Date(c.created_at).toLocaleDateString()} • ${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-            image: c.image_url || "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop",
+            image: Array.isArray(c.image_url) && c.image_url.length > 0 ? c.image_url[0] : (typeof c.image_url === "string" ? c.image_url : "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop"),
             category: c.category,
             date: c.created_at,
             reporter: c.citizen_name,
