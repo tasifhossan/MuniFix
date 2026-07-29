@@ -202,3 +202,20 @@ export async function fetchAdminWorkers() {
   }
   return res.json();
 }
+
+export async function updateUserRole(userId: string, payload: { role: string; department_id?: number | null }) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/role`, {
+    method: "PATCH",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update user role");
+  }
+  return res.json();
+}

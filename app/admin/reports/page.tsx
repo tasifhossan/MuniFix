@@ -24,6 +24,8 @@ export default function SystemActivityLogPage() {
   const [eventType, setEventType] = useState("All");
   const [dateRange, setDateRange] = useState("Oct 20, 2024 - Oct 27, 2024");
 
+  // TODO: backend endpoint not implemented yet
+
   return (
     <div className="min-h-screen bg-[#f8fafc] flex font-sans">
       {/* Sidebar - link active to reports, hide permissions and departments */}

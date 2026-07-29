@@ -9,15 +9,32 @@ interface BarItem {
   maxCount: number;
 }
 
-export default function ComplaintsChart() {
-  const data: BarItem[] = [
-    { label: "Roads", count: 85, maxCount: 100 },
-    { label: "Water", count: 62, maxCount: 100 },
-    { label: "Waste", count: 78, maxCount: 100 },
-    { label: "Power", count: 42, maxCount: 100 },
-    { label: "Sanitation", count: 50, maxCount: 100 },
-    { label: "Parks", count: 28, maxCount: 100 },
-  ];
+interface ComplaintsChartProps {
+  complaints?: any[];
+}
+
+export default function ComplaintsChart({ complaints = [] }: ComplaintsChartProps) {
+  // Group complaints by department name (or category as a fallback)
+  const departmentCounts: { [key: string]: number } = {};
+  complaints.forEach((c) => {
+    const dept = c.department_name || c.category || "General";
+    departmentCounts[dept] = (departmentCounts[dept] || 0) + 1;
+  });
+
+  const maxCount = Math.max(...Object.values(departmentCounts), 10);
+
+  const data: BarItem[] = Object.keys(departmentCounts).length > 0
+    ? Object.entries(departmentCounts).map(([label, count]) => ({
+        label: label.split(" ")[0], // abbreviate to first word
+        count,
+        maxCount,
+      }))
+    : [
+        { label: "Roads", count: 0, maxCount: 10 },
+        { label: "Water", count: 0, maxCount: 10 },
+        { label: "Waste", count: 0, maxCount: 10 },
+        { label: "Power", count: 0, maxCount: 10 },
+      ];
 
   return (
     <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm font-sans flex flex-col justify-between flex-1 min-w-[320px] h-[340px]">
