@@ -20,6 +20,7 @@ export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
 
+  // TODO: backend endpoint not implemented yet
   // Exact mock data matching the screenshot
   const mockUsers: UserItem[] = [
     {

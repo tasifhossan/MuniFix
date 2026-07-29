@@ -72,6 +72,7 @@ export default function SettingsPage() {
     });
   };
 
+  // TODO: backend endpoint not implemented yet
   const handleNotificationToggle = (key: string, enabled: boolean) => {
     setNotifications((prev) => ({
       ...prev,
@@ -123,6 +124,7 @@ export default function SettingsPage() {
                 points={2450}
                 level={4}
               />
+              {/* TODO: backend endpoint not implemented yet */}
               <SecurityStatusCard
                 twoFactorEnabled={true}
                 lastLogin="2h ago"

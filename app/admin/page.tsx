@@ -232,8 +232,8 @@ export default function AdminDashboardPage() {
             {/* Middle Section: Bar Chart & Donut Chart (static charts — future phase) */}
             {profile?.role === "super_admin" && (
               <div className="flex flex-col lg:flex-row gap-6">
-                <ComplaintsChart />
-                <StatusDistribution />
+                <ComplaintsChart complaints={complaints} />
+                <StatusDistribution complaints={complaints} />
               </div>
             )}
 

@@ -14,12 +14,14 @@ import {
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminHeader from "@/components/AdminHeader";
 import UserStatsCard from "@/components/UserStatsCard";
+import { updateUserRole } from "@/lib/api";
 
 interface AdminUser {
   id: string;
   name: string;
   email: string;
   department: string;
+  department_id?: number | null;
   role: string;
   status: boolean; // true = Active, false = Inactive
   initials: string;
@@ -29,38 +31,89 @@ interface AdminUser {
 
 const initialUsers: AdminUser[] = [
   {
-    id: "1",
-    name: "Ahmed Hossain",
-    email: "ahmed.h@munifix.gov.bd",
-    department: "Waste Management",
-    role: "Department Head",
+    id: "ca7db62f-d1cf-4d0e-99f0-c76c4db52c1b",
+    name: "Admin 1",
+    email: "1@admin.com",
+    department: "Waterlogging",
+    department_id: 1,
+    role: "dept_admin",
     status: true,
-    initials: "AH",
+    initials: "A1",
     avatarBg: "bg-[#e0f2fe]",
     avatarText: "text-[#0369a1]",
   },
   {
-    id: "2",
-    name: "Sultana Kamal",
-    email: "s.kamal@munifix.gov.bd",
-    department: "Public Works",
-    role: "Operator",
-    status: false,
-    initials: "SK",
+    id: "c90adc34-76dc-49a5-bdf2-3ccf6fa9f712",
+    name: "Tasif Worker",
+    email: "tasif@worker.com",
+    department: "Waterlogging",
+    department_id: 1,
+    role: "field_worker",
+    status: true,
+    initials: "TW",
     avatarBg: "bg-[#e2f2f0]",
     avatarText: "text-[#0f766e]",
   },
   {
-    id: "3",
-    name: "Tanvir Rahman",
-    email: "tanvir.r@munifix.gov.bd",
-    department: "Electricity & Lighting",
-    role: "Field Officer",
+    id: "c5421a99-d0bc-48dd-a158-800805cad038",
+    name: "SuperAdmin 1",
+    email: "1@suadmin.com",
+    department: "Waterlogging",
+    department_id: 1,
+    role: "super_admin",
     status: true,
-    initials: "TR",
+    initials: "SA",
     avatarBg: "bg-[#f1f5f9]",
     avatarText: "text-[#475569]",
   },
+  {
+    id: "c59d9c2e-4b6b-4e12-87ad-d345ff4b10b0",
+    name: "Super Admin",
+    email: "admin@munifix.gov",
+    department: "General",
+    department_id: null,
+    role: "super_admin",
+    status: true,
+    initials: "SA",
+    avatarBg: "bg-[#f1f5f9]",
+    avatarText: "text-[#475569]",
+  },
+  {
+    id: "b2569e5d-16a8-4c22-b1e1-88f1c3272e7c",
+    name: "Rahim Worker",
+    email: "rahim@munifix.gov",
+    department: "Waste Management",
+    department_id: 3,
+    role: "field_worker",
+    status: true,
+    initials: "RW",
+    avatarBg: "bg-[#e0f2fe]",
+    avatarText: "text-[#0369a1]",
+  },
+  {
+    id: "7bdc3b6b-3d53-4e8d-9d8a-5e17cfe00303",
+    name: "Waste Admin",
+    email: "wasteadmin@munifix.gov",
+    department: "Waste Management",
+    department_id: 3,
+    role: "dept_admin",
+    status: true,
+    initials: "WA",
+    avatarBg: "bg-[#e2f2f0]",
+    avatarText: "text-[#0f766e]",
+  },
+  {
+    id: "3447ecce-db52-4fa0-9354-f9ea17bfe831",
+    name: "Roads Admin",
+    email: "roadsadmin@munifix.gov",
+    department: "Road Repair",
+    department_id: 2,
+    role: "dept_admin",
+    status: true,
+    initials: "RA",
+    avatarBg: "bg-[#f1f5f9]",
+    avatarText: "text-[#475569]",
+  }
 ];
 
 export default function RolePermissionsPage() {
@@ -68,6 +121,8 @@ export default function RolePermissionsPage() {
   const [users, setUsers] = useState<AdminUser[]>(initialUsers);
   const [savedState, setSavedState] = useState<AdminUser[]>(initialUsers);
   const [showToast, setShowToast] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Auto-hide toast after 3 seconds
   useEffect(() => {
@@ -80,9 +135,8 @@ export default function RolePermissionsPage() {
   }, [showToast]);
 
   const handleToggleStatus = (id: string) => {
-    setUsers(prev =>
-      prev.map(user => (user.id === id ? { ...user, status: !user.status } : user))
-    );
+    // TODO: backend endpoint not implemented yet
+    alert("User status toggle (activation/deactivation) backend endpoint is not implemented yet.");
   };
 
   const handleRoleChange = (id: string, newRole: string) => {
@@ -91,13 +145,36 @@ export default function RolePermissionsPage() {
     );
   };
 
-  const handleSaveChanges = () => {
-    setSavedState([...users]);
-    setShowToast(true);
+  const handleSaveChanges = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      // Find users whose roles have changed
+      const modified = users.filter(user => {
+        const original = savedState.find(o => o.id === user.id);
+        return original && original.role !== user.role;
+      });
+
+      for (const u of modified) {
+        await updateUserRole(u.id, {
+          role: u.role,
+          department_id: u.department_id
+        });
+      }
+
+      setSavedState([...users]);
+      setShowToast(true);
+    } catch (err: any) {
+      setError(err.message || "Failed to update role privileges");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDiscardChanges = () => {
     setUsers([...savedState]);
+    setError(null);
   };
 
   // Filter users based on search
@@ -136,8 +213,13 @@ export default function RolePermissionsPage() {
             onSearchChange={setSearchTerm}
           />
 
-          {/* Main Container */}
           <main className="px-8 py-6 space-y-6 flex-1">
+            {error && (
+              <div className="p-4 bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold rounded-2xl animate-fade-in flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
+            )}
             
             {/* Stats row & Quick Action Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 select-none">
@@ -262,10 +344,10 @@ export default function RolePermissionsPage() {
                               onChange={(e) => handleRoleChange(user.id, e.target.value)}
                               className="w-full bg-[#f8fafc]/60 border border-slate-205 rounded-xl py-1.5 pl-3.5 pr-8 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#005c55] cursor-pointer appearance-none shadow-sm transition-all"
                             >
-                              <option value="Department Head">Department Head</option>
-                              <option value="Operator">Operator</option>
-                              <option value="Field Officer">Field Officer</option>
-                              <option value="Administrator">Administrator</option>
+                              <option value="citizen">Citizen</option>
+                              <option value="field_worker">Field Worker</option>
+                              <option value="dept_admin">Department Admin</option>
+                              <option value="super_admin">Super Admin</option>
                             </select>
                             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
                               <ChevronDown className="w-3.5 h-3.5" />
@@ -322,9 +404,10 @@ export default function RolePermissionsPage() {
                   </button>
                   <button
                     onClick={handleSaveChanges}
-                    className="inline-flex items-center justify-center bg-[#005c55] hover:bg-[#004540] text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-md cursor-pointer transition-all select-none active:scale-[0.98]"
+                    disabled={saving}
+                    className="inline-flex items-center justify-center bg-[#005c55] hover:bg-[#004540] text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-md cursor-pointer transition-all select-none active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Save Changes
+                    {saving ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
               </div>
