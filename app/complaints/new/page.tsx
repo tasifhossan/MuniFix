@@ -36,6 +36,9 @@ export default function NewComplaintPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [reportId, setReportId] = useState("");
+  const [aiCategory, setAiCategory] = useState("");
+  const [aiPriority, setAiPriority] = useState("");
+  const [aiConfidence, setAiConfidence] = useState(0);
 
   const charLimit = 1000;
 
@@ -113,11 +116,14 @@ export default function NewComplaintPage() {
       if (latitude !== null) fd.append("latitude", String(latitude));
       if (longitude !== null) fd.append("longitude", String(longitude));
       if (selectedFile) {
-        fd.append("image", selectedFile);
+        fd.append("images", selectedFile);
       }
       const res = await createComplaint(fd);
       if (res.success) {
         setReportId(`#CTG-2024-${res.complaint?.id || Math.floor(1000 + Math.random() * 9000)}`);
+        setAiCategory(res.complaint?.ai_category || res.complaint?.category || "Other");
+        setAiPriority(res.complaint?.ai_priority || res.complaint?.priority || "medium");
+        setAiConfidence(res.complaint?.ai_confidence_score ? parseFloat(res.complaint.ai_confidence_score) : 80.0);
         setIsSubmitted(true);
       }
     } catch (err: any) {
@@ -300,6 +306,8 @@ export default function NewComplaintPage() {
             isOpen={isSubmitted}
             onClose={handleCloseModal}
             reportId={reportId}
+            description={`Our AI system auto-categorized this report as "${aiCategory}" with "${aiPriority}" priority (Confidence: ${aiConfidence.toFixed(1)}%). You can track details in your dashboard.`}
+            expectedResponse={aiPriority === "critical" ? "24 Hours" : aiPriority === "high" ? "48 Hours" : "3 Days"}
             onPrimaryAction={handleViewDashboard}
             onSecondaryAction={handleSubmitAnother}
           />

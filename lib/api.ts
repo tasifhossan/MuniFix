@@ -130,3 +130,23 @@ export async function deleteComplaint(id: string) {
   }
   return res.json();
 }
+
+export async function editComplaint(
+  id: string,
+  payload: { description: string; category: string; latitude?: number; longitude?: number }
+) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/complain/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to edit complaint");
+  }
+  return res.json();
+}

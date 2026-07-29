@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Share, AlertTriangle, CheckCircle2, Loader2, Trash2, Edit3 } from "lucide-react";
+import { ArrowLeft, Share, AlertTriangle, CheckCircle2, Loader2, Trash2, Edit3, XCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import Badge from "@/components/Badge";
@@ -109,6 +109,22 @@ export default function ComplaintDetailsPage() {
     } catch (err: any) {
       triggerToast(`Failed to delete: ${err.message}`);
       setIsDeleting(false);
+    }
+  };
+
+  const handleCancelComplaint = async () => {
+    if (!window.confirm("Are you sure you want to cancel this complaint?")) return;
+    try {
+      setLoading(true);
+      const res = await updateComplaintStatus(id, { status: "cancelled", notes: "Cancelled by citizen." });
+      if (res.success) {
+        triggerToast("Complaint cancelled successfully!");
+        loadData();
+      }
+    } catch (err: any) {
+      triggerToast(`Failed to cancel: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -253,6 +269,23 @@ export default function ComplaintDetailsPage() {
                     <Trash2 className="w-4 h-4 text-red-500 stroke-[2.5]" />
                     <span>Delete</span>
                   </button>
+                )}
+                {user && user.id === complaint.original?.citizen_id && complaint.original?.status === "pending" && (
+                  <>
+                    <Link href={`/complaints/edit?id=${complaint.id}`}>
+                      <button className="flex items-center gap-2 border border-gray-205 hover:border-gray-300 text-gray-700 bg-white px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-sm active:scale-[0.98] cursor-pointer">
+                        <Edit3 className="w-4 h-4 text-gray-400 stroke-[2.5]" />
+                        <span>Edit</span>
+                      </button>
+                    </Link>
+                    <button
+                      onClick={handleCancelComplaint}
+                      className="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+                    >
+                      <XCircle className="w-4 h-4 text-amber-500 stroke-[2.5]" />
+                      <span>Cancel</span>
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={handleShare}
