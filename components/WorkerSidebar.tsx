@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface WorkerSidebarProps {
   activeNav?: string;
@@ -25,6 +26,7 @@ export default function WorkerSidebar({
   activeNav, 
   onNavClick 
 }: WorkerSidebarProps) {
+  const { logout } = useAuth();
   const pathname = usePathname();
 
   const currentActive = activeNav || (
@@ -125,12 +127,13 @@ export default function WorkerSidebar({
           </button>
         </Link>
         
-        <Link href="/login" className="block">
-          <button className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-red-600 hover:bg-red-50/50 transition-all select-none cursor-pointer">
-            <LogOut className="w-4.5 h-4.5" />
-            <span>Logout</span>
-          </button>
-        </Link>
+        <button 
+          onClick={logout}
+          className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-red-600 hover:bg-red-50/50 transition-all select-none cursor-pointer"
+        >
+          <LogOut className="w-4.5 h-4.5" />
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   );

@@ -59,7 +59,7 @@ export default function AdminSidebar({
     pathname?.includes("/admin/settings") ? "settings" : "dashboard"
   );
 
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const effectiveRole = user?.role ? (user.role === "super_admin" ? "superadmin" : "admin") : role;
   const isSuperAdmin = effectiveRole === "superadmin";
   const dashboardHref = isSuperAdmin ? "/dashboard/superadmin" : "/dashboard/admin";
@@ -215,12 +215,13 @@ export default function AdminSidebar({
           </button>
         </Link>
         
-        <Link href="/login" className="block">
-          <button className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:text-red-600 hover:bg-red-55/40 transition-all rounded-xl select-none cursor-pointer">
-            <LogOut className="w-5 h-5 text-slate-500" />
-            <span>Logout</span>
-          </button>
-        </Link>
+        <button 
+          onClick={logout}
+          className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:text-red-600 hover:bg-red-55/40 transition-all rounded-xl select-none cursor-pointer"
+        >
+          <LogOut className="w-5 h-5 text-slate-500" />
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   );
