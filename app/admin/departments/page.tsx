@@ -1,71 +1,80 @@
 "use client";
 
-import React, { useState } from "react";
-import { Search, Bell, Plus, TrendingUp } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Search, Bell, Plus, Loader2, AlertTriangle } from "lucide-react";
 import AdminSidebar from "@/components/AdminSidebar";
 import DepartmentStatsCard from "@/components/DepartmentStatsCard";
 import DepartmentTable, { DepartmentItem } from "@/components/DepartmentTable";
 import DepartmentLoadBalance from "@/components/DepartmentLoadBalance";
 import OperationalGuidelines from "@/components/OperationalGuidelines";
+import { fetchAdminDepartments } from "@/lib/api";
+
+// Icon mapping helper based on department name
+function getIconType(name: string): "water" | "light" | "waste" | "road" {
+  const n = name?.toLowerCase() || "";
+  if (n.includes("water") || n.includes("sewerage")) return "water";
+  if (n.includes("light") || n.includes("electricity") || n.includes("power")) return "light";
+  if (n.includes("waste") || n.includes("garbage") || n.includes("sanitation")) return "waste";
+  return "road";
+}
+
+// Icon color mapping helper
+function getIconColorClass(name: string): string {
+  const type = getIconType(name);
+  const styles = {
+    water: "bg-[#e0f2fe] text-[#0369a1] border border-sky-100",
+    light: "bg-[#e0e7ff] text-[#4f46e5] border border-indigo-100",
+    waste: "bg-[#fef3c7] text-[#b45309] border border-amber-100",
+    road: "bg-[#d1fae5] text-[#047857] border border-emerald-100",
+  };
+  return styles[type] || styles.road;
+}
+
+// Complaint badge color helper
+function getComplaintBadgeClass(activeCount: number): string {
+  if (activeCount > 20) return "bg-[#ffe4e6] text-[#e11d48] border border-rose-100";
+  return "bg-[#ccfbf1] text-[#0d9488] border border-teal-100";
+}
 
 export default function AdminDepartmentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [departments, setDepartments] = useState<DepartmentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Exact mock data matching the screenshot
-  const mockDepartments: DepartmentItem[] = [
-    {
-      id: "dept-1",
-      name: "Water & Sewerage",
-      subtitle: "Maintenance & Pipeline",
-      iconType: "water",
-      iconColorClass: "bg-[#e0f2fe] text-[#0369a1] border border-sky-100",
-      headName: "Eng. Ahmed Faruq",
-      headAvatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop",
-      totalStaff: 128,
-      activeComplaints: 24,
-      complaintBadgeColorClass: "bg-[#ffe4e6] text-[#e11d48] border border-rose-100",
-    },
-    {
-      id: "dept-2",
-      name: "Public Lighting",
-      subtitle: "Street lights & Grid",
-      iconType: "light",
-      iconColorClass: "bg-[#e0e7ff] text-[#4f46e5] border border-indigo-100",
-      headName: "Ms. Tahmina Akter",
-      headAvatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop",
-      totalStaff: 45,
-      activeComplaints: 8,
-      complaintBadgeColorClass: "bg-[#ccfbf1] text-[#0d9488] border border-teal-100",
-    },
-    {
-      id: "dept-3",
-      name: "Waste Management",
-      subtitle: "Sanitation & Recycling",
-      iconType: "waste",
-      iconColorClass: "bg-[#fef3c7] text-[#b45309] border border-amber-100",
-      headName: "Mr. Rafiqul Islam",
-      headAvatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150&auto=format&fit=crop",
-      totalStaff: 210,
-      activeComplaints: 52,
-      complaintBadgeColorClass: "bg-[#ffedd5] text-[#d97706] border border-orange-100",
-    },
-    {
-      id: "dept-4",
-      name: "Road Engineering",
-      subtitle: "Potholes & Pavement",
-      iconType: "road",
-      iconColorClass: "bg-[#d1fae5] text-[#047857] border border-emerald-100",
-      headName: "Nazmun Sakib",
-      headInitials: "NS",
-      headBgClass: "bg-slate-100 text-slate-650 border border-slate-200",
-      totalStaff: 88,
-      activeComplaints: 15,
-      complaintBadgeColorClass: "bg-[#ffe4e6] text-[#e11d48] border border-rose-100",
-    },
-  ];
+  async function loadDepartments() {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetchAdminDepartments();
+      const rawList = res.departments ?? res ?? [];
+      const mappedList: DepartmentItem[] = rawList.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        subtitle: d.description || "City operations and maintenance",
+        iconType: getIconType(d.name),
+        iconColorClass: getIconColorClass(d.name),
+        headName: d.manager_name || "Eng. Ahmed Faruq",
+        headInitials: d.manager_name ? d.manager_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() : "AF",
+        headBgClass: "bg-slate-100 text-slate-650 border border-slate-200",
+        totalStaff: d.staff_count ? parseInt(d.staff_count) : 12,
+        activeComplaints: d.active_complaints_count ? parseInt(d.active_complaints_count) : 0,
+        complaintBadgeColorClass: getComplaintBadgeClass(d.active_complaints_count ? parseInt(d.active_complaints_count) : 0),
+      }));
+      setDepartments(mappedList);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadDepartments();
+  }, []);
 
   // Filtering logic
-  const filteredDepartments = mockDepartments.filter((dept) => {
+  const filteredDepartments = departments.filter((dept) => {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       return (
@@ -76,6 +85,9 @@ export default function AdminDepartmentsPage() {
     }
     return true;
   });
+
+  const totalStaffCount = departments.reduce((sum, d) => sum + d.totalStaff, 0);
+  const totalPendingComplaints = departments.reduce((sum, d) => sum + d.activeComplaints, 0);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex font-sans">
@@ -126,32 +138,28 @@ export default function AdminDepartmentsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               <DepartmentStatsCard
                 title="Total Departments"
-                value={12}
+                value={departments.length}
                 rightElement={
-                  <span className="inline-flex items-center bg-[#ccfbf1] text-[#0d9488] text-[10px] font-black px-2.5 py-0.5 rounded-full select-none">
-                    +2 New
+                  <span className="text-[10px] font-extrabold text-slate-400 select-none">
+                    Active Units
                   </span>
                 }
               />
               <DepartmentStatsCard
                 title="Active Staff"
-                value={342}
+                value={totalStaffCount}
                 rightElement={
                   <span className="text-[10px] font-extrabold text-slate-400 select-none">
-                    Total 12 Units
+                    Across all units
                   </span>
                 }
               />
               <DepartmentStatsCard
                 title="Pending Tasks"
-                value={87}
+                value={totalPendingComplaints}
                 rightElement={
-                  <span className="inline-flex items-center text-red-500 text-[10px] font-extrabold gap-0.5 select-none">
-                    <svg className="w-3 h-3 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                      <polyline points="17 6 23 6 23 12" />
-                    </svg>
-                    ~14%
+                  <span className="text-[10px] font-extrabold text-slate-400 select-none">
+                    Requiring resolution
                   </span>
                 }
               />
@@ -166,12 +174,32 @@ export default function AdminDepartmentsPage() {
               />
             </div>
 
-            {/* Active Departments Table */}
-            <DepartmentTable
-              items={filteredDepartments}
-              onEdit={(item) => alert(`Editing department: ${item.name}`)}
-              onDelete={(item) => alert(`Deleting department: ${item.name}`)}
-            />
+            {loading ? (
+              <div className="bg-white rounded-3xl border border-slate-200/95 p-20 flex flex-col items-center justify-center min-h-[300px] shadow-sm animate-pulse">
+                <Loader2 className="w-10 h-10 text-[#005c55] animate-spin" />
+                <p className="text-slate-500 text-sm font-bold mt-4">Connecting to departments database...</p>
+              </div>
+            ) : error ? (
+              <div className="bg-white rounded-3xl border border-slate-200/95 p-20 flex flex-col items-center justify-center min-h-[300px] text-center shadow-sm">
+                <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
+                <h3 className="text-base font-extrabold text-slate-800">Failed to Load Departments</h3>
+                <p className="text-slate-400 text-xs mt-1.5 max-w-sm leading-relaxed">{error}</p>
+                <button
+                  onClick={loadDepartments}
+                  className="mt-6 bg-[#005c55] hover:bg-[#004540] text-white text-xs font-bold px-6 py-3 rounded-xl transition-all shadow-md active:scale-[0.98] cursor-pointer"
+                >
+                  Retry Connection
+                </button>
+              </div>
+            ) : (
+              /* Active Departments Table */
+              <DepartmentTable
+                items={filteredDepartments}
+                totalCount={departments.length}
+                onEdit={(item) => alert(`Editing department: ${item.name}`)}
+                onDelete={(item) => alert(`Deleting department: ${item.name}`)}
+              />
+            )}
 
             {/* Bottom Grid: Load Balance & Operational Guidelines */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

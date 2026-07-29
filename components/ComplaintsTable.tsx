@@ -63,6 +63,14 @@ export default function ComplaintsTable({
     );
   };
 
+  const itemsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage));
+  
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pages.push(i);
+  }
+
   return (
     <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden font-sans w-full">
       <div className="overflow-x-auto">
@@ -172,27 +180,36 @@ export default function ComplaintsTable({
 
         {/* Page controls */}
         <div className="flex items-center gap-1.5">
-          <button className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-[#005c55] hover:bg-slate-50 transition-colors cursor-pointer shrink-0">
+          <button 
+            disabled={currentPage === 1}
+            onClick={() => onPageChange?.(currentPage - 1)}
+            className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-[#005c55] hover:bg-slate-50 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <ChevronLeft className="w-4 h-4" />
           </button>
           
-          <button className="bg-[#005c55] text-white rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer shadow-sm shadow-[#005c55]/20">
-            1
-          </button>
-          <button className="bg-white border border-slate-200 text-slate-700 hover:text-[#005c55] hover:bg-slate-50 rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer transition-colors">
-            2
-          </button>
-          <button className="bg-white border border-slate-200 text-slate-700 hover:text-[#005c55] hover:bg-slate-50 rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer transition-colors">
-            3
-          </button>
-          
-          <span className="text-slate-400 text-xs font-bold px-1 select-none">...</span>
+          {pages.map((p) => {
+            const isCurrent = p === currentPage;
+            return (
+              <button
+                key={p}
+                onClick={() => onPageChange?.(p)}
+                className={`rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer transition-all ${
+                  isCurrent
+                    ? "bg-[#005c55] text-white shadow-sm shadow-[#005c55]/20"
+                    : "bg-white border border-slate-200 text-slate-700 hover:text-[#005c55] hover:bg-slate-50"
+                }`}
+              >
+                {p}
+              </button>
+            );
+          })}
 
-          <button className="bg-white border border-slate-200 text-slate-700 hover:text-[#005c55] hover:bg-slate-50 rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer transition-colors">
-            312
-          </button>
-
-          <button className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-[#005c55] hover:bg-slate-50 transition-colors cursor-pointer shrink-0">
+          <button 
+            disabled={currentPage === totalPages}
+            onClick={() => onPageChange?.(currentPage + 1)}
+            className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-[#005c55] hover:bg-slate-50 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -200,3 +217,4 @@ export default function ComplaintsTable({
     </div>
   );
 }
+

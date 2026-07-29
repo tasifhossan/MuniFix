@@ -29,6 +29,7 @@ export interface DepartmentItem {
 
 interface DepartmentTableProps {
   items: DepartmentItem[];
+  totalCount?: number;
   onEdit?: (item: DepartmentItem) => void;
   onDelete?: (item: DepartmentItem) => void;
   onFilterClick?: () => void;
@@ -37,6 +38,7 @@ interface DepartmentTableProps {
 
 export default function DepartmentTable({
   items,
+  totalCount = items.length,
   onEdit,
   onDelete,
   onFilterClick,
@@ -211,7 +213,7 @@ export default function DepartmentTable({
       {/* Table Pagination Footer */}
       <div className="bg-[#f8fafc] border-t border-slate-200/60 px-6 py-4 flex items-center justify-between select-none">
         <span className="text-xs font-bold text-slate-400">
-          Showing 1-{items.length} of 12 departments
+          Showing 1-{items.length} of {totalCount} departments
         </span>
 
         {/* Previous and Next buttons */}
