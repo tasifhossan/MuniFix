@@ -101,7 +101,7 @@ export default function AdminComplaintsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]/50 flex font-sans">
+    <div className="min-h-screen bg-[#f8fafc] flex font-sans">
       {/* Sidebar - Left panel */}
       <AdminSidebar 
         activeNav={activeNav} 

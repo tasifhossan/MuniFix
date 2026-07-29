@@ -59,9 +59,9 @@ export default function LoginPage() {
       } else if (role === "field_worker") {
         router.push("/worker");
       } else if (role === "dept_admin") {
-        router.push("/admin");
+        router.push("/dashboard/admin");
       } else if (role === "super_admin") {
-        router.push("/admin");
+        router.push("/dashboard/superadmin");
       } else {
         router.push("/dashboard");
       }

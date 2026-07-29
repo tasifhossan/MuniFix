@@ -79,7 +79,7 @@ export default function AdminUsersPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50/30 flex font-sans">
+    <div className="min-h-screen bg-[#f8fafc] flex font-sans">
       {/* Sidebar - Configure settings list at top, + New Report button in bottom footer */}
       <AdminSidebar 
         activeNav="users" 

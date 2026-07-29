@@ -71,11 +71,20 @@ export function middleware(request: NextRequest) {
       if (role === "dept_admin") {
         // Block access to worker field pages
         if (pathname.startsWith("/worker")) {
-          return NextResponse.redirect(new URL("/admin", request.url));
+          return NextResponse.redirect(new URL("/dashboard/admin", request.url));
         }
-        // /dashboard (generic) → send to admin dashboard
-        if (pathname === "/dashboard") {
-          return NextResponse.redirect(new URL("/admin", request.url));
+        // Block access to super admin only subpages
+        if (
+          pathname.startsWith("/admin/departments") ||
+          pathname.startsWith("/admin/permissions") ||
+          pathname.startsWith("/admin/users") ||
+          pathname.startsWith("/admin/reports")
+        ) {
+          return NextResponse.redirect(new URL("/dashboard/admin", request.url));
+        }
+        // /dashboard (generic) or raw /admin → send to admin dashboard
+        if (pathname === "/dashboard" || pathname === "/admin") {
+          return NextResponse.redirect(new URL("/dashboard/admin", request.url));
         }
         // Wrong role sub-paths → admin home
         if (
@@ -83,7 +92,7 @@ export function middleware(request: NextRequest) {
           pathname === "/dashboard/worker" ||
           pathname === "/dashboard/superadmin"
         ) {
-          return NextResponse.redirect(new URL("/admin", request.url));
+          return NextResponse.redirect(new URL("/dashboard/admin", request.url));
         }
       }
 
@@ -91,18 +100,19 @@ export function middleware(request: NextRequest) {
       if (role === "super_admin") {
         // Block access to worker field pages
         if (pathname.startsWith("/worker")) {
-          return NextResponse.redirect(new URL("/admin", request.url));
+          return NextResponse.redirect(new URL("/dashboard/superadmin", request.url));
         }
-        // /dashboard (generic) → send to admin dashboard
-        if (pathname === "/dashboard") {
-          return NextResponse.redirect(new URL("/admin", request.url));
+        // /dashboard (generic) or raw /admin → send to admin dashboard
+        if (pathname === "/dashboard" || pathname === "/admin") {
+          return NextResponse.redirect(new URL("/dashboard/superadmin", request.url));
         }
         // Wrong role sub-paths → admin home
         if (
           pathname === "/dashboard/citizen" ||
-          pathname === "/dashboard/worker"
+          pathname === "/dashboard/worker" ||
+          pathname === "/dashboard/admin"
         ) {
-          return NextResponse.redirect(new URL("/admin", request.url));
+          return NextResponse.redirect(new URL("/dashboard/superadmin", request.url));
         }
       }
     }

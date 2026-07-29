@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   LayoutGrid, 
   AlertTriangle, 
@@ -58,8 +59,13 @@ export default function AdminSidebar({
     pathname?.includes("/admin/settings") ? "settings" : "dashboard"
   );
 
+  const { user } = useAuth();
+  const effectiveRole = user?.role ? (user.role === "super_admin" ? "superadmin" : "admin") : role;
+  const isSuperAdmin = effectiveRole === "superadmin";
+  const dashboardHref = isSuperAdmin ? "/dashboard/superadmin" : "/dashboard/admin";
+
   const baseItems = [
-    { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className="w-5 h-5" />, href: "/admin" },
+    { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className="w-5 h-5" />, href: dashboardHref },
     { id: "permissions", label: "Permissions", icon: <ShieldCheck className="w-5 h-5" />, href: "/admin/permissions" },
     { id: "complaints", label: "Complaints", icon: <AlertTriangle className="w-5 h-5" />, href: "/admin/complaints" },
     { id: "departments", label: "Departments", icon: <Building className="w-5 h-5" />, href: "/admin/departments" },
@@ -74,6 +80,12 @@ export default function AdminSidebar({
     if (hideUsersAndDepartments && (item.id === "permissions" || item.id === "departments")) {
       return false;
     }
+
+    // Automatically hide superadmin-only views from dept_admin
+    if (!isSuperAdmin && (item.id === "permissions" || item.id === "departments" || item.id === "reports")) {
+      return false;
+    }
+
     return true;
   });
 
@@ -87,8 +99,6 @@ export default function AdminSidebar({
       onNavClick(id);
     }
   };
-
-  const isSuperAdmin = role === "superadmin";
 
   const renderNewReportButton = () => (
     <Link href="/complaints/new">

@@ -78,7 +78,7 @@ export default function AdminDepartmentsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50/30 flex font-sans">
+    <div className="min-h-screen bg-[#f8fafc] flex font-sans">
       {/* Sidebar - Hide the New Report button on the Departments list page */}
       <AdminSidebar activeNav="departments" hideNewReport={true} />
 

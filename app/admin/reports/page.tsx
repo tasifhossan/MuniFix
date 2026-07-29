@@ -25,7 +25,7 @@ export default function SystemActivityLogPage() {
   const [dateRange, setDateRange] = useState("Oct 20, 2024 - Oct 27, 2024");
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]/50 flex font-sans">
+    <div className="min-h-screen bg-[#f8fafc] flex font-sans">
       {/* Sidebar - link active to reports, hide permissions and departments */}
       <AdminSidebar 
         activeNav={activeNav} 

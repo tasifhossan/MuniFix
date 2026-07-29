@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Building,
   FileText,
@@ -29,6 +31,15 @@ import {
 
 export default function AdminDashboardPage() {
   const [activeNav, setActiveNav] = useState("dashboard");
+  const { user } = useAuth();
+  const router = useRouter();
+
+  // Redirect if loaded on the raw /admin path
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.pathname === "/admin" && user) {
+      router.replace(user.role === "super_admin" ? "/dashboard/superadmin" : "/dashboard/admin");
+    }
+  }, [user, router]);
 
   // Live data state
   const [profile, setProfile] = useState<any>(null);
@@ -84,7 +95,7 @@ export default function AdminDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50/30 flex flex-col font-sans">
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
         <Navbar activeNav="" />
         <div className="flex flex-1 items-center justify-center">
           <div className="flex flex-col items-center gap-4">
@@ -98,7 +109,7 @@ export default function AdminDashboardPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-50/30 flex flex-col font-sans">
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
         <Navbar activeNav="" />
         <div className="flex flex-1 items-center justify-center">
           <div className="flex flex-col items-center gap-4 text-center max-w-sm">
@@ -118,14 +129,14 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/30 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
       {/* Top Navigation Bar */}
       <Navbar user={navUser} activeNav="" />
 
       {/* Main split layout container */}
       <div className="flex flex-1 w-full">
         {/* Left Sidebar */}
-        <AdminSidebar role="superadmin" activeNav={activeNav} onNavClick={setActiveNav} />
+        <AdminSidebar role={profile?.role === "super_admin" ? "superadmin" : "admin"} activeNav={activeNav} onNavClick={setActiveNav} />
 
         {/* Right Content panel */}
         <div className="flex-1 min-h-screen flex flex-col justify-between">
@@ -219,10 +230,12 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Middle Section: Bar Chart & Donut Chart (static charts — future phase) */}
-            <div className="flex flex-col lg:flex-row gap-6">
-              <ComplaintsChart />
-              <StatusDistribution />
-            </div>
+            {profile?.role === "super_admin" && (
+              <div className="flex flex-col lg:flex-row gap-6">
+                <ComplaintsChart />
+                <StatusDistribution />
+              </div>
+            )}
 
             {/* Bottom Section: Critical Activity & Incident Hotspots */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

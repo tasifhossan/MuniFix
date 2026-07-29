@@ -113,7 +113,7 @@ export default function RolePermissionsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]/50 flex font-sans">
+    <div className="min-h-screen bg-[#f8fafc] flex font-sans">
       {/* Sidebar - Configure active item and hide unused departments option */}
       <AdminSidebar 
         activeNav="permissions" 
