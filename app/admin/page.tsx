@@ -34,13 +34,6 @@ export default function AdminDashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  // Redirect if loaded on the raw /admin path
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.pathname === "/admin" && user) {
-      router.replace(user.role === "super_admin" ? "/dashboard/superadmin" : "/dashboard/admin");
-    }
-  }, [user, router]);
-
   // Live data state
   const [profile, setProfile] = useState<any>(null);
   const [complaints, setComplaints] = useState<any[]>([]);

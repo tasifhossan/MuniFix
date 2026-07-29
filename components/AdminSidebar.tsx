@@ -71,6 +71,11 @@ export default function AdminSidebar({
     { id: "departments", label: "Departments", icon: <Building className="w-5 h-5" />, href: "/admin/departments" },
     { id: "reports", label: "Reports", icon: <BarChart3 className="w-5 h-5" />, href: "/admin/reports" },
   ].filter(item => {
+    // If super admin, ensure they can always see permissions, departments, and reports
+    if (isSuperAdmin && (item.id === "permissions" || item.id === "departments" || item.id === "reports")) {
+      return true;
+    }
+
     if (hideDashboard && item.id === "dashboard") return false;
     if (hidePermissions && item.id === "permissions") return false;
     if (hideComplaints && item.id === "complaints") return false;
