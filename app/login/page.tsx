@@ -53,8 +53,18 @@ export default function LoginPage() {
     setError(null);
     setSuccessMsg(null);
     try {
-      await login(formData.email, formData.password);
-      router.push("/dashboard");
+      const role = await login(formData.email, formData.password);
+      if (role === "citizen") {
+        router.push("/dashboard/citizen");
+      } else if (role === "field_worker") {
+        router.push("/dashboard/worker");
+      } else if (role === "dept_admin") {
+        router.push("/dashboard/admin");
+      } else if (role === "super_admin") {
+        router.push("/dashboard/superadmin");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.message || "Invalid credentials");
     } finally {

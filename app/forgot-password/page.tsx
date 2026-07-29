@@ -1,11 +1,12 @@
 "use client";
-// NOTE: This page is pending backend support (request-reset/reset-password endpoints are missing).
+// NOTE: This page is integrated with backend support.
 
 import React, { useState } from "react";
 import Link from "next/link";
 import { Mail, Building, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
+import { forgotPassword } from "@/lib/auth";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -13,7 +14,7 @@ export default function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
@@ -26,11 +27,14 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
 
-    // Simulate API request
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await forgotPassword(email);
       setSubmitted(true);
-    }, 1800);
+    } catch (err: any) {
+      setError(err.message || "Failed to send reset link. Please verify your email.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
