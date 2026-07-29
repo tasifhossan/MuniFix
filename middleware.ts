@@ -102,8 +102,8 @@ export function middleware(request: NextRequest) {
         if (pathname.startsWith("/worker")) {
           return NextResponse.redirect(new URL("/dashboard/superadmin", request.url));
         }
-        // /dashboard (generic) or raw /admin → send to admin dashboard
-        if (pathname === "/dashboard" || pathname === "/admin") {
+        // /dashboard (generic) or raw /admin or /superadmin → send to admin dashboard
+        if (pathname === "/dashboard" || pathname === "/admin" || pathname === "/superadmin") {
           return NextResponse.redirect(new URL("/dashboard/superadmin", request.url));
         }
         // Wrong role sub-paths → admin home
@@ -129,5 +129,6 @@ export const config = {
     "/settings/:path*",
     "/admin/:path*",
     "/worker/:path*",
+    "/superadmin/:path*",
   ],
 };

@@ -24,7 +24,7 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    mobile: "",
+    phone: "",
     password: "",
     confirmPassword: "",
     agreeTerms: false
@@ -70,11 +70,11 @@ export default function RegisterPage() {
       await register({
         name: formData.name,
         email: formData.email,
-        phone: formData.mobile,
+        phone: formData.phone,
         password: formData.password,
         role: "citizen"
       });
-      router.push("/login?success=" + encodeURIComponent("Account registered successfully. Please sign in."));
+      router.push("/verify?email=" + encodeURIComponent(formData.email));
     } catch (err: any) {
       setError(err.message || "Registration failed. Please try again.");
     } finally {
@@ -167,11 +167,11 @@ export default function RegisterPage() {
 
             <Input
               label="Mobile Number"
-              name="mobile"
+              name="phone"
               type="tel"
               required
               placeholder="01XXXXXXXXX"
-              value={formData.mobile}
+              value={formData.phone}
               onChange={handleInputChange}
               icon={<Smartphone className="w-4 h-4" />}
             />
@@ -288,7 +288,7 @@ export default function RegisterPage() {
               disabled={
                 !formData.name ||
                 !formData.email ||
-                !formData.mobile ||
+                !formData.phone ||
                 passwordStrength < 3 ||
                 formData.password !== formData.confirmPassword ||
                 !formData.agreeTerms

@@ -130,7 +130,7 @@ export async function verifyOtp(email: string, otp: string) {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ email, otp }),
+    body: JSON.stringify({ email, otp, otp_code: otp }),
   });
 
   const data = await response.json();

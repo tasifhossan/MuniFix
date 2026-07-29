@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Mail,
   Check,
@@ -18,6 +19,7 @@ import AuthBackground from "@/components/AuthBackground";
 import { verifyOtp, forgotPassword } from "@/lib/auth";
 
 export default function VerifyPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("j.doe@example.com");
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
   const [loading, setLoading] = useState(false);
@@ -53,7 +55,7 @@ export default function VerifyPage() {
     setError(null);
     try {
       await verifyOtp(email, code);
-      setSubmitted(true);
+      router.push("/login?success=" + encodeURIComponent("Account verified successfully. Please sign in."));
     } catch (err: any) {
       setError(err.message || "Verification failed. Please check the code.");
     } finally {
@@ -93,9 +95,9 @@ export default function VerifyPage() {
             </div>
 
             <div className="pt-2">
-              <Link href="/" className="w-full block">
+              <Link href="/login" className="w-full block">
                 <Button variant="primary" className="w-full py-3.5 flex items-center justify-center gap-2">
-                  Go to Homepage
+                  Go to Login Page
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </Link>

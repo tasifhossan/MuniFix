@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Load and hydrate session on mount
   useEffect(() => {
     async function hydrateAuth() {
-      const storedToken = localStorage.getItem("munifix_authtoken");
+      const storedToken = localStorage.getItem("token") || localStorage.getItem("munifix_authtoken");
       const storedRefresh = localStorage.getItem("munifix_refresh_token");
 
       if (storedToken) {
@@ -42,23 +42,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const decoded = parseJwt(storedToken);
         if (decoded) {
           // Initialize state with decoded token values before profile loads
-          setUser({
+          const initialUser = {
             id: decoded.id,
             email: decoded.email,
             role: decoded.role,
             name: "", // temporary
-          });
+          };
+          setUser(initialUser);
+          localStorage.setItem("user", JSON.stringify(initialUser));
 
           try {
             // Fetch the full profile (including name and department_id)
             const profile = await fetchMyProfile(storedToken);
-            setUser({
+            const fullUser = {
               id: decoded.id,
               email: decoded.email,
               role: decoded.role,
               name: profile.name,
               department_id: profile.department_id,
-            });
+            };
+            setUser(fullUser);
+            localStorage.setItem("user", JSON.stringify(fullUser));
             setAuthCookie(storedToken); // Refresh cookie lifecycle
           } catch (error) {
             console.error("Hydration profile fetch failed, trying to refresh token:", error);
@@ -66,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               try {
                 const refreshed = await refreshAuthToken(storedRefresh);
                 const newAccessToken = refreshed.authtoken;
+                localStorage.setItem("token", newAccessToken);
                 localStorage.setItem("munifix_authtoken", newAccessToken);
                 setAuthtoken(newAccessToken);
                 setAuthCookie(newAccessToken);
@@ -73,17 +78,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const newDecoded = parseJwt(newAccessToken);
                 if (newDecoded) {
                   const profile = await fetchMyProfile(newAccessToken);
-                  setUser({
+                  const fullUser = {
                     id: newDecoded.id,
                     email: newDecoded.email,
                     role: newDecoded.role,
                     name: profile.name,
                     department_id: profile.department_id,
-                  });
+                  };
+                  setUser(fullUser);
+                  localStorage.setItem("user", JSON.stringify(fullUser));
                 }
               } catch (refreshErr) {
                 console.error("Token refresh failed:", refreshErr);
                 // Clear state
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
                 localStorage.removeItem("munifix_authtoken");
                 localStorage.removeItem("munifix_refresh_token");
                 clearAuthCookie();
@@ -92,6 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             } else {
               // Clear state
+              localStorage.removeItem("token");
+              localStorage.removeItem("user");
               localStorage.removeItem("munifix_authtoken");
               clearAuthCookie();
               setUser(null);
@@ -113,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = response.authtoken;
       const refresh = response.refreshToken;
 
+      localStorage.setItem("token", token);
       localStorage.setItem("munifix_authtoken", token);
       localStorage.setItem("munifix_refresh_token", refresh);
       setAuthCookie(token);
@@ -124,23 +136,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Set user with decoded values immediately
-      setUser({
+      const initialUser = {
         id: decoded.id,
         email: decoded.email,
         role: decoded.role,
         name: "",
-      });
+      };
+      setUser(initialUser);
+      localStorage.setItem("user", JSON.stringify(initialUser));
 
       // Now fetch full profile to retrieve the user's name
       try {
         const profile = await fetchMyProfile(token);
-        setUser({
+        const fullUser = {
           id: decoded.id,
           email: decoded.email,
           role: decoded.role,
           name: profile.name,
           department_id: profile.department_id,
-        });
+        };
+        setUser(fullUser);
+        localStorage.setItem("user", JSON.stringify(fullUser));
       } catch (err) {
         console.error("Fetch profile failed after login:", err);
       }
@@ -149,6 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       setUser(null);
       setAuthtoken(null);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
       localStorage.removeItem("munifix_authtoken");
       localStorage.removeItem("munifix_refresh_token");
       clearAuthCookie();
@@ -173,6 +191,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Always clear local storage & cookies even if the API request failed
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     localStorage.removeItem("munifix_authtoken");
     localStorage.removeItem("munifix_refresh_token");
     clearAuthCookie();

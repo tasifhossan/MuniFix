@@ -5,7 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Search, Bell, Menu, X, ChevronDown, Globe, Mail, Phone, Loader2 } from "lucide-react";
 import NotificationDropdown, { NotificationItem } from "./NotificationDropdown";
-import { getActiveProfile, setActiveProfile, profiles, ActiveProfile, fetchNotifications, markNotificationAsRead } from "@/lib/api";
+import { fetchNotifications, markNotificationAsRead } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavbarProps {
   activeNav?: string;
@@ -23,54 +24,18 @@ export default function Navbar({
   user,
   isDashboard = false,
 }: NavbarProps) {
+  const { user: authUser } = useAuth();
+
+  const displayUser = user || (authUser ? {
+    name: authUser.name || authUser.email || "Citizen",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop"
+  } : null);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [activeProfile, setActiveProfileState] = useState<ActiveProfile>(getActiveProfile());
 
-  const handleProfileChange = async (profile: ActiveProfile) => {
-    try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-      const res = await fetch(`${API_BASE_URL}/auth/signin`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: profile.email,
-          password: "password123", // Default testing password for seeded database users
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.authtoken) {
-          localStorage.setItem("token", data.authtoken);
-          localStorage.setItem("munifix_authtoken", data.authtoken);
-          localStorage.setItem("munifix_refresh_token", data.refreshToken);
-          localStorage.setItem(
-            "user",
-            JSON.stringify({
-              id: data.users.id,
-              email: data.users.email,
-              role: profile.role,
-              name: profile.name,
-            })
-          );
-        }
-      }
-    } catch (err) {
-      console.error("Failed to automatically authenticate active profile:", err);
-    }
-
-    setActiveProfile(profile);
-    setActiveProfileState(profile);
-    setProfileDropdownOpen(false);
-    if (typeof window !== "undefined") {
-      window.location.reload();
-    }
-  };
 
   // Live notifications from MuniFix backend
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -291,54 +256,22 @@ export default function Navbar({
             )}
           </div>
 
-          {/* Active Testing Profile Switcher */}
-          <div className="relative">
-            <button
-              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center space-x-2 border border-teal-100 hover:border-brand-teal bg-teal-50/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-gray-700 select-none cursor-pointer"
-            >
-              <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
-              <span>{activeProfile.name}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400 stroke-[2.5px]" />
-            </button>
 
-            {profileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-150 rounded-2xl shadow-xl z-50 p-2 animate-fade-in animate-duration-150">
-                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-3.5 py-1.5 border-b border-gray-100 mb-1">
-                  Select User Context
-                </div>
-                {profiles.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => handleProfileChange(p)}
-                    className={`w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between ${
-                      activeProfile.id === p.id ? "bg-teal-50/70 text-brand-teal font-bold" : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span>{p.name}</span>
-                    {activeProfile.id === p.id && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* Auth profile avatar (if logged in) or buttons */}
-          {user ? (
+          {displayUser ? (
             <>
               <div className="w-[1px] h-6 bg-slate-200" />
               <div className="flex items-center space-x-3 cursor-pointer">
                 <div className="relative w-9 h-9 rounded-full overflow-hidden border border-slate-200 shadow-sm shrink-0">
                   <img
-                    src={user.avatar}
-                    alt={user.name}
+                    src={displayUser.avatar}
+                    alt={displayUser.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <span className="text-sm font-bold text-slate-800 hover:text-[#005c55] transition-colors">
-                  {user.name}
+                  {displayUser.name}
                 </span>
               </div>
             </>
