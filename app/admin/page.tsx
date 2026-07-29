@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
-import { 
-  Building, 
-  FileText, 
-  ShieldCheck, 
-  Users, 
-  Calendar, 
-  FileDown, 
-  TrendingUp 
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Building,
+  FileText,
+  ShieldCheck,
+  Users,
+  Calendar,
+  FileDown,
+  TrendingUp,
+  Loader2,
+  AlertTriangle,
+  RefreshCw
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AdminSidebar from "@/components/AdminSidebar";
@@ -17,24 +20,111 @@ import ComplaintsChart from "@/components/ComplaintsChart";
 import StatusDistribution from "@/components/StatusDistribution";
 import CriticalActivityLog from "@/components/CriticalActivityLog";
 import IncidentHotspots from "@/components/IncidentHotspots";
+import {
+  fetchComplaints,
+  fetchAdminDepartments,
+  fetchAdminWorkers,
+  fetchMyProfile,
+} from "@/lib/api";
 
 export default function AdminDashboardPage() {
   const [activeNav, setActiveNav] = useState("dashboard");
 
-  // Mock citizen user profile for top navbar
-  const mockUser = {
-    name: "Ahmed Khan",
-    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150&auto=format&fit=crop",
-  };
+  // Live data state
+  const [profile, setProfile] = useState<any>(null);
+  const [complaints, setComplaints] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [workers, setWorkers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [profileData, complaintData, deptData] = await Promise.all([
+        fetchMyProfile(),
+        fetchComplaints(),
+        fetchAdminDepartments(),
+      ]);
+
+      setProfile(profileData.user ?? profileData);
+      setComplaints(complaintData.complaints ?? []);
+      setDepartments(deptData.departments ?? deptData ?? []);
+
+      // Workers only available for dept_admin / super_admin — try but don't crash
+      try {
+        const workerData = await fetchAdminWorkers();
+        setWorkers(workerData.workers ?? workerData ?? []);
+      } catch {
+        setWorkers([]);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  // Compute derived stats
+  const totalComplaints = complaints.length;
+  const resolvedComplaints = complaints.filter((c) => c.status === "resolved").length;
+  const resolutionRate =
+    totalComplaints > 0 ? ((resolvedComplaints / totalComplaints) * 100).toFixed(1) : "0.0";
+
+  // User object for Navbar
+  const navUser = profile
+    ? { name: profile.name ?? profile.username ?? "Admin", avatar: profile.avatar_url ?? undefined }
+    : undefined;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50/30 flex flex-col font-sans">
+        <Navbar activeNav="" />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-10 h-10 text-[#005c55] animate-spin" />
+            <p className="text-slate-500 text-sm font-bold">Loading admin dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50/30 flex flex-col font-sans">
+        <Navbar activeNav="" />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+            <AlertTriangle className="w-10 h-10 text-red-400" />
+            <p className="text-slate-700 font-bold">Failed to load dashboard</p>
+            <p className="text-slate-400 text-xs">{error}</p>
+            <button
+              onClick={loadDashboard}
+              className="inline-flex items-center gap-2 bg-[#005c55] text-white text-xs font-bold px-5 py-2.5 rounded-xl hover:bg-[#004540] transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50/30 flex flex-col font-sans">
-      {/* Top Navigation Bar - full-width stretching across sidebar and content */}
-      <Navbar user={mockUser} activeNav="" />
+      {/* Top Navigation Bar */}
+      <Navbar user={navUser} activeNav="" />
 
       {/* Main split layout container */}
       <div className="flex flex-1 w-full">
-        {/* Left Sidebar - Super Admin view */}
+        {/* Left Sidebar */}
         <AdminSidebar role="superadmin" activeNav={activeNav} onNavClick={setActiveNav} />
 
         {/* Right Content panel */}
@@ -64,33 +154,33 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Analytical Stats Card Grid */}
+            {/* Live Analytical Stats Card Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               <AnalyticsStatsCard
                 icon={<Building className="w-5 h-5 text-emerald-600" />}
                 iconBgClass="bg-emerald-50 border border-emerald-100/50"
                 badgeText="Active"
-                badgeClass="bg-emerald-55 bg-emerald-100 text-emerald-650 text-emerald-700 font-extrabold"
+                badgeClass="bg-emerald-100 text-emerald-700 font-extrabold"
                 title="Total Departments"
-                value="12"
+                value={String(departments.length)}
                 footerElement={
                   <>
                     <span className="text-emerald-500">&bull;</span>
-                    <span>+0% change</span>
+                    <span>{departments.length} registered</span>
                   </>
                 }
               />
               <AnalyticsStatsCard
                 icon={<FileText className="w-5 h-5 text-amber-600" />}
                 iconBgClass="bg-amber-50 border border-amber-100/50"
-                badgeText="+12%"
-                badgeClass="bg-amber-100 text-amber-655 text-amber-700 font-extrabold"
+                badgeText={totalComplaints > 0 ? "Live" : "0"}
+                badgeClass="bg-amber-100 text-amber-700 font-extrabold"
                 title="Total Complaints"
-                value="4,821"
+                value={totalComplaints.toLocaleString()}
                 footerElement={
                   <>
                     <span className="text-emerald-500 font-bold">&#8593;</span>
-                    <span>vs last month</span>
+                    <span>{resolvedComplaints} resolved</span>
                   </>
                 }
               />
@@ -98,13 +188,17 @@ export default function AdminDashboardPage() {
                 icon={<ShieldCheck className="w-5 h-5 text-indigo-600" />}
                 iconBgClass="bg-indigo-50 border border-indigo-100/50"
                 badgeText="Target 90%"
-                badgeClass="bg-indigo-100 text-indigo-650 text-indigo-700 font-extrabold"
+                badgeClass="bg-indigo-100 text-indigo-700 font-extrabold"
                 title="Resolution Rate"
-                value="88.4%"
+                value={`${resolutionRate}%`}
                 footerElement={
                   <>
                     <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>Improving steadily</span>
+                    <span>
+                      {parseFloat(resolutionRate) >= 80
+                        ? "On track"
+                        : "Needs improvement"}
+                    </span>
                   </>
                 }
               />
@@ -112,9 +206,9 @@ export default function AdminDashboardPage() {
                 icon={<Users className="w-5 h-5 text-sky-600" />}
                 iconBgClass="bg-sky-50 border border-sky-100/50"
                 badgeText="Live"
-                badgeClass="bg-sky-100 text-sky-650 text-sky-700 font-extrabold"
+                badgeClass="bg-sky-100 text-sky-700 font-extrabold"
                 title="Active Workers"
-                value="156"
+                value={workers.length > 0 ? String(workers.length) : "—"}
                 footerElement={
                   <>
                     <Users className="w-3 h-3 text-slate-400" />
@@ -124,7 +218,7 @@ export default function AdminDashboardPage() {
               />
             </div>
 
-            {/* Middle Section: Bar Chart & Donut Chart */}
+            {/* Middle Section: Bar Chart & Donut Chart (static charts — future phase) */}
             <div className="flex flex-col lg:flex-row gap-6">
               <ComplaintsChart />
               <StatusDistribution />
@@ -152,7 +246,7 @@ export default function AdminDashboardPage() {
               </a>
             </div>
             <span className="select-none text-slate-400 mt-1">
-              &copy; 2024 MuniFix Ctg. All rights reserved.
+              &copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.
             </span>
           </footer>
         </div>

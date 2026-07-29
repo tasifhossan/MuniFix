@@ -55,6 +55,20 @@ export default function CitizenDashboard() {
   const totalCount = complaints.length;
   const resolvedCount = complaints.filter(c => c.status === "resolved").length;
   const inProgressCount = complaints.filter(c => c.status === "in_progress" || c.status === "assigned").length;
+  const pendingCount = complaints.filter(c => c.status === "pending").length;
+
+  // Average response: mean days from created_at to updated_at for resolved complaints
+  const resolvedWithDates = complaints.filter(
+    c => c.status === "resolved" && c.created_at && c.updated_at
+  );
+  const avgResponseDays = resolvedWithDates.length > 0
+    ? (
+        resolvedWithDates.reduce((sum, c) => {
+          const diffMs = new Date(c.updated_at).getTime() - new Date(c.created_at).getTime();
+          return sum + diffMs / (1000 * 60 * 60 * 24);
+        }, 0) / resolvedWithDates.length
+      ).toFixed(1)
+    : "—";
 
   if (loading) {
     return <LoadingScreen />;
@@ -154,12 +168,12 @@ export default function CitizenDashboard() {
                   </div>
                 </div>
 
-                {/* AVG. RESPONSE */}
+                {/* PENDING */}
                 <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm flex flex-col justify-between min-h-[110px]">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Avg. Response</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pending</p>
                   <div className="flex items-baseline justify-between mt-2">
-                    <span className="text-3xl font-black text-gray-800">4.2</span>
-                    <span className="text-xs font-bold text-slate-400">Days</span>
+                    <span className="text-3xl font-black text-gray-800">{pendingCount}</span>
+                    <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100/50">Awaiting</span>
                   </div>
                 </div>
               </div>

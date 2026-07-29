@@ -150,3 +150,55 @@ export async function editComplaint(
   }
   return res.json();
 }
+
+export async function fetchMyProfile() {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/my/profile`, {
+    method: "GET",
+    headers: { ...headers },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch profile");
+  }
+  return res.json();
+}
+
+export async function fetchWorkerTasks() {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/complain/worker/tasks`, {
+    method: "GET",
+    headers: { ...headers },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch worker tasks");
+  }
+  return res.json();
+}
+
+export async function fetchAdminDepartments() {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/admin/departments`, {
+    method: "GET",
+    headers: { ...headers },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch departments");
+  }
+  return res.json();
+}
+
+export async function fetchAdminWorkers() {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/admin/workers`, {
+    method: "GET",
+    headers: { ...headers },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch workers");
+  }
+  return res.json();
+}
