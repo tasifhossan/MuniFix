@@ -18,8 +18,7 @@ import AdminSidebar from "@/components/AdminSidebar";
 import AdminHeader from "@/components/AdminHeader";
 import UserStatsCard from "@/components/UserStatsCard";
 import { useAuth } from "@/contexts/AuthContext";
-
-// ─── Types ───────────────────────────────────────────────────────────────────
+import { fetchActivityLogs } from "@/lib/api";
 
 interface LogActor {
   name: string | null;
@@ -36,10 +35,6 @@ interface LogItem {
   created_at: string;
   actor: LogActor;
 }
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
 /** Returns an icon + colour config for a given action string */
 function getLogMeta(action: string): {
@@ -184,19 +179,6 @@ export default function SystemActivityLogPage() {
 
   // ── Fetch helpers ────────────────────────────────────────────────────────
 
-  const buildQueryString = useCallback(
-    (page: number) => {
-      const params = new URLSearchParams();
-      params.set("page", String(page));
-      params.set("limit", "20");
-      if (eventTypeFilter) params.set("action", eventTypeFilter);
-      if (startDate) params.set("startDate", startDate);
-      if (endDate) params.set("endDate", endDate);
-      return params.toString();
-    },
-    [eventTypeFilter, startDate, endDate]
-  );
-
   const fetchLogs = useCallback(
     async (page: number, append = false) => {
       if (append) {
@@ -206,17 +188,13 @@ export default function SystemActivityLogPage() {
         setError(null);
       }
       try {
-        const token = localStorage.getItem("munifix_authtoken");
-        const res = await fetch(`${API_BASE}/logs?${buildQueryString(page)}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const data = await fetchActivityLogs({
+          page,
+          limit: 20,
+          action: eventTypeFilter || undefined,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
         });
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.message || `Request failed with status ${res.status}`);
-        }
-        const data = await res.json();
         const incoming: LogItem[] = data.logs ?? [];
         setTotalPages(data.totalPages ?? 1);
         setCurrentPage(page);
@@ -228,7 +206,7 @@ export default function SystemActivityLogPage() {
         setLoadingMore(false);
       }
     },
-    [buildQueryString]
+    [eventTypeFilter, startDate, endDate]
   );
 
   // Initial load
