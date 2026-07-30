@@ -29,13 +29,16 @@ export default function NewComplaintPage() {
   const [detectedArea, setDetectedArea] = useState("Chattogram, Bangladesh");
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [reportId, setReportId] = useState("");
+  const [aiCategory, setAiCategory] = useState<string | null>(null);
+  const [aiPriority, setAiPriority] = useState<string | null>(null);
+  const [aiConfidence, setAiConfidence] = useState<number | null>(null);
 
   const charLimit = 1000;
 
@@ -53,7 +56,16 @@ export default function NewComplaintPage() {
     setIsSearchingLocation(true);
     setDetectedArea("Searching address...");
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=bd`,
+        {
+          headers: {
+            'User-Agent': 'MuniFix-Ctg/1.0 contact@munifix.ctg',
+            'Accept-Language': 'en',
+            'Accept': 'application/json'
+          }
+        }
+      );
       const data = await res.json();
       if (data && data[0]) {
         const lat = parseFloat(data[0].lat);
@@ -112,12 +124,24 @@ export default function NewComplaintPage() {
       fd.append("description", description);
       if (latitude !== null) fd.append("latitude", String(latitude));
       if (longitude !== null) fd.append("longitude", String(longitude));
-      if (selectedFile) {
-        fd.append("image", selectedFile);
+      
+      if (selectedFiles.length > 6) {
+        setError("You can upload a maximum of 6 images.");
+        setIsSubmitting(false);
+        return;
       }
+
+      selectedFiles.forEach((file) => {
+        fd.append("images", file);
+      });
       const res = await createComplaint(fd);
       if (res.success) {
-        setReportId(`#CTG-2024-${res.complaint?.id || Math.floor(1000 + Math.random() * 9000)}`);
+        const rawId = res.complaint?.id;
+        const shortId = typeof rawId === "string" && rawId.includes("-") ? rawId.split("-")[0] : (rawId || Math.floor(1000 + Math.random() * 9000));
+        setReportId(`#CTG-${new Date().getFullYear()}-${shortId}`);
+        setAiCategory(res.complaint?.ai_category || res.complaint?.category || null);
+        setAiPriority(res.complaint?.ai_priority || res.complaint?.priority || null);
+        setAiConfidence(res.complaint?.ai_confidence_score !== undefined && res.complaint?.ai_confidence_score !== null ? parseFloat(res.complaint.ai_confidence_score) : null);
         setIsSubmitted(true);
       }
     } catch (err: any) {
@@ -175,7 +199,7 @@ export default function NewComplaintPage() {
           <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-gray-150 p-6 sm:p-8 shadow-sm space-y-8">
             
             {/* Evidence Upload */}
-            <EvidenceUpload onFileSelect={setSelectedFile} />
+            <EvidenceUpload onFilesSelect={setSelectedFiles} />
 
             {/* Description field */}
             <div className="space-y-2">
@@ -300,8 +324,17 @@ export default function NewComplaintPage() {
             isOpen={isSubmitted}
             onClose={handleCloseModal}
             reportId={reportId}
+            description={
+              aiCategory && aiPriority
+                ? `Your report has been auto-routed and processed by our municipal AI category system.`
+                : `Your report has been logged and queued for manual categorization by a department moderator.`
+            }
+            expectedResponse={aiPriority === "critical" ? "24 Hours" : aiPriority === "high" ? "48 Hours" : "3 Days"}
             onPrimaryAction={handleViewDashboard}
             onSecondaryAction={handleSubmitAnother}
+            aiCategory={aiCategory}
+            aiPriority={aiPriority}
+            aiConfidence={aiConfidence}
           />
         </div>
 
@@ -313,10 +346,9 @@ export default function NewComplaintPage() {
 
       </div>
 
-      {/* Global Simple Footer */}
       <footer className="bg-slate-100/50 border-t border-slate-200 mt-auto">
         <div className="max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center text-xs font-semibold text-gray-500 gap-4">
-          <span>&copy; 2024 MuniFix Ctg. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <a href="#departments" className="hover:text-brand-teal transition-colors">Departments</a>
             <a href="#privacy" className="hover:text-brand-teal transition-colors">Privacy Policy</a>

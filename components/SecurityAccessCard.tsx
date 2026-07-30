@@ -18,6 +18,7 @@ export default function SecurityAccessCard({
 }: SecurityAccessCardProps) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [sessionsCount, setSessionsCount] = useState(initialSessionsCount);
   const [loggingOutSessions, setLoggingOutSessions] = useState(false);
@@ -26,12 +27,16 @@ export default function SecurityAccessCard({
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentPassword || !newPassword) {
-      setPassError("Both password fields are required");
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPassError("All password fields are required");
       return;
     }
     if (newPassword.length < 6) {
       setPassError("New password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPassError("New password and confirm password do not match");
       return;
     }
     
@@ -44,6 +49,7 @@ export default function SecurityAccessCard({
       setPassSuccess(true);
       setCurrentPassword("");
       setNewPassword("");
+      setConfirmPassword("");
       setTimeout(() => setPassSuccess(false), 5000);
     } catch (err: any) {
       setPassError(err.message || "Failed to update password");
@@ -88,7 +94,7 @@ export default function SecurityAccessCard({
         </div>
 
         <form onSubmit={handleUpdatePassword} className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <Input
               label="Current Password"
               type="password"
@@ -104,6 +110,15 @@ export default function SecurityAccessCard({
               placeholder="••••••••"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              className="bg-white"
+            />
+
+            <Input
+              label="Confirm Password"
+              type="password"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               className="bg-white"
             />
 

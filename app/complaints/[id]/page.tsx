@@ -3,15 +3,17 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Share, AlertTriangle, CheckCircle2, Loader2, Trash2, Edit3 } from "lucide-react";
+import { ArrowLeft, Share, AlertTriangle, CheckCircle2, Loader2, Trash2, Edit3, XCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import Badge from "@/components/Badge";
 import ComplaintMetrics from "@/components/ComplaintMetrics";
 import Timeline from "@/components/Timeline";
-import { fetchComplaintById, updateComplaintStatus, deleteComplaint, getActiveProfile } from "@/lib/api";
+import { fetchComplaintById, updateComplaintStatus, deleteComplaint, fetchUsers } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ComplaintDetailsPage() {
+  const { user } = useAuth();
   const params = useParams();
   const router = useRouter();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -20,14 +22,47 @@ export default function ComplaintDetailsPage() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeProfile, setActiveProfile] = useState<any>(null);
 
   // Status update form states
   const [newStatus, setNewStatus] = useState("");
   const [updateNotes, setUpdateNotes] = useState("");
-  const [selectedWorkerId, setSelectedWorkerId] = useState("b2569e5d-16a8-4c22-b1e1-88f1c3272e7c");
+  const [selectedWorkerId, setSelectedWorkerId] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Category override states
+  const [overrideCategory, setOverrideCategory] = useState("");
+  const [isOverriding, setIsOverriding] = useState(false);
+  const [overrideError, setOverrideError] = useState<string | null>(null);
+
+  // Dynamic worker states
+  const [workers, setWorkers] = useState<any[]>([]);
+  const [workersLoading, setWorkersLoading] = useState(false);
+  const [workersError, setWorkersError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!complaint?.department_id || !user) return;
+    if (user.role !== "dept_admin" && user.role !== "super_admin") return;
+
+    async function getWorkers() {
+      setWorkersLoading(true);
+      setWorkersError(null);
+      try {
+        const res = await fetchUsers({
+          role: "field_worker",
+          department_id: complaint.department_id,
+        });
+        const list = res.users ?? res ?? [];
+        setWorkers(list);
+      } catch (err: any) {
+        setWorkersError("Failed to load workers. Please refresh.");
+      } finally {
+        setWorkersLoading(false);
+      }
+    }
+
+    getWorkers();
+  }, [complaint?.department_id, user?.role]);
 
   const id = params?.id as string;
 
@@ -50,19 +85,21 @@ export default function ComplaintDetailsPage() {
           title: c.category + " Issue - " + (c.citizen_name || "Citizen Report"),
           description: c.description,
           priority: c.priority === "critical" || c.priority === "high" ? "CRITICAL" : c.priority === "low" ? "LOW" : "MEDIUM",
-          status: c.status === "assigned" ? "Dispatched" : c.status === "in_progress" ? "In Progress" : c.status === "resolved" ? "Resolved" : "Pending Approval",
+          status: c.status === "assigned" ? "Dispatched" : c.status === "in_progress" ? "In Progress" : c.status === "resolved" ? "Resolved" : c.status === "cancelled" ? "Cancelled" : "Pending Approval",
           location: c.latitude && c.longitude ? `${c.latitude}, ${c.longitude}` : "Chattogram City",
           time: `Reported on ${new Date(c.created_at).toLocaleDateString()} • ${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-          image: c.image_url || "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop",
+          image: Array.isArray(c.image_url) && c.image_url.length > 0 ? c.image_url[0] : (typeof c.image_url === "string" ? c.image_url : null),
           category: c.category,
           date: c.created_at,
           reporter: c.citizen_name,
+          department_id: c.department_id,
           original: c
         };
         setComplaint(mapped);
         setAssignment(res.assignment);
         setHistory(res.history);
         setNewStatus(c.status);
+        setOverrideCategory(c.category || "");
       }
     } catch (err: any) {
       setError(err.message);
@@ -73,21 +110,6 @@ export default function ComplaintDetailsPage() {
 
   useEffect(() => {
     loadData();
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("munifix_active_profile");
-      if (stored) {
-        try {
-          setActiveProfile(JSON.parse(stored));
-        } catch (e) {}
-      } else {
-        setActiveProfile({
-          id: "f19d2bba-ea7f-4422-b5e1-55c3272e276b",
-          name: "John Citizen (Citizen)",
-          role: "citizen",
-          email: "john@gmail.com"
-        });
-      }
-    }
   }, [id]);
 
   const handleUpdateStatus = async (e: React.FormEvent) => {
@@ -112,6 +134,38 @@ export default function ComplaintDetailsPage() {
     }
   };
 
+  const handleCategoryOverride = async () => {
+    if (!overrideCategory) return;
+    setIsOverriding(true);
+    setOverrideError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/complain/${id}/category`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            category: overrideCategory,
+            ai_override: true 
+          })
+        }
+      );
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      triggerToast('Category updated successfully');
+      // Refresh complaint data
+      await loadData();
+    } catch (err: any) {
+      setOverrideError(err.message);
+    } finally {
+      setIsOverriding(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this complaint?")) return;
     try {
@@ -123,6 +177,22 @@ export default function ComplaintDetailsPage() {
     } catch (err: any) {
       triggerToast(`Failed to delete: ${err.message}`);
       setIsDeleting(false);
+    }
+  };
+
+  const handleCancelComplaint = async () => {
+    if (!window.confirm("Are you sure you want to cancel this complaint?")) return;
+    try {
+      setLoading(true);
+      const res = await updateComplaintStatus(id, { status: "cancelled", notes: "Cancelled by citizen." });
+      if (res.success) {
+        triggerToast("Complaint cancelled successfully!");
+        loadData();
+      }
+    } catch (err: any) {
+      triggerToast(`Failed to cancel: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -258,7 +328,7 @@ export default function ComplaintDetailsPage() {
 
               {/* Action buttons (Share & Export) */}
               <div className="flex items-center gap-3 shrink-0 print:hidden">
-                {activeProfile && (activeProfile.role === "super_admin" || activeProfile.id === complaint.original?.citizen_id) && (
+                {user && (user.role === "super_admin" || user.id === complaint.original?.citizen_id) && (
                   <button
                     onClick={handleDelete}
                     disabled={isDeleting}
@@ -267,6 +337,23 @@ export default function ComplaintDetailsPage() {
                     <Trash2 className="w-4 h-4 text-red-500 stroke-[2.5]" />
                     <span>Delete</span>
                   </button>
+                )}
+                {user && user.id === complaint.original?.citizen_id && complaint.original?.status === "pending" && (
+                  <>
+                    <Link href={`/complaints/edit?id=${complaint.id}`}>
+                      <button className="flex items-center gap-2 border border-gray-205 hover:border-gray-300 text-gray-700 bg-white px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-sm active:scale-[0.98] cursor-pointer">
+                        <Edit3 className="w-4 h-4 text-gray-400 stroke-[2.5]" />
+                        <span>Edit</span>
+                      </button>
+                    </Link>
+                    <button
+                      onClick={handleCancelComplaint}
+                      className="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+                    >
+                      <XCircle className="w-4 h-4 text-amber-500 stroke-[2.5]" />
+                      <span>Cancel</span>
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={handleShare}
@@ -296,16 +383,35 @@ export default function ComplaintDetailsPage() {
             <div className="lg:col-span-5 bg-white rounded-3xl border border-gray-150 p-5 shadow-sm space-y-5 flex flex-col justify-between print:col-span-5 print:shadow-none">
               
               {complaint.image && (
-                <div className="w-full h-56 relative rounded-2xl overflow-hidden shrink-0 bg-slate-100 shadow-inner border border-gray-100">
-                  <img
-                    src={complaint.image}
-                    alt={complaint.title}
-                    className="w-full h-full object-cover"
-                  />
-                  {/* Overlaid Priority Badge */}
-                  <div className="absolute top-4 right-4">
-                    <Badge type="priority" value={complaint.priority} />
+                <div className="space-y-3 shrink-0">
+                  <div className="w-full h-56 relative rounded-2xl overflow-hidden bg-slate-100 shadow-inner border border-gray-100">
+                    <img
+                      src={complaint.image}
+                      alt={complaint.title}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Overlaid Priority Badge */}
+                    <div className="absolute top-4 right-4">
+                      <Badge type="priority" value={complaint.priority} />
+                    </div>
                   </div>
+
+                  {/* Thumbnail gallery for multiple uploaded images */}
+                  {Array.isArray(complaint.original?.image_url) && complaint.original.image_url.length > 1 && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {complaint.original.image_url.map((imgUrl: string, idx: number) => (
+                        <div 
+                          key={idx} 
+                          onClick={() => setComplaint((prev: any) => ({ ...prev, image: imgUrl }))}
+                          className={`aspect-video rounded-lg overflow-hidden border cursor-pointer hover:border-brand-teal transition-all ${
+                            complaint.image === imgUrl ? "border-brand-teal ring-2 ring-brand-teal/20" : "border-gray-255"
+                          }`}
+                        >
+                          <img src={imgUrl} className="w-full h-full object-cover" alt={`Evidence ${idx + 1}`} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -315,9 +421,26 @@ export default function ComplaintDetailsPage() {
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pt-0.5">
                     Category
                   </span>
-                  <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-xl text-xs border border-gray-150/40">
-                    {complaint.category}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-xl text-xs border border-gray-150/40">
+                      {complaint.category}
+                    </span>
+                    {(() => {
+                      const scoreVal = parseFloat(complaint.ai_confidence_score ?? complaint.original?.ai_confidence_score);
+                      if (isNaN(scoreVal)) return null;
+                      return scoreVal < 70 ? (
+                        <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase border border-amber-200 select-none">
+                          <AlertTriangle className="w-3 h-3 text-amber-500" />
+                          <span>Low AI confidence — manual review recommended</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase border border-emerald-200 select-none">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                          <span>AI categorized with high confidence</span>
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <div className="flex justify-between items-start gap-4">
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pt-0.5 shrink-0">
@@ -375,7 +498,7 @@ export default function ComplaintDetailsPage() {
           </div>
 
           {/* Admin / Dept Admin operations panel */}
-          {activeProfile && (activeProfile.role === "dept_admin" || activeProfile.role === "super_admin") && (
+          {user && (user.role === "dept_admin" || user.role === "super_admin") && (
             <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-brand-teal">
                 <Edit3 className="w-5 h-5 stroke-[2.5]" />
@@ -402,10 +525,29 @@ export default function ComplaintDetailsPage() {
                     <select
                       value={selectedWorkerId}
                       onChange={(e) => setSelectedWorkerId(e.target.value)}
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-teal bg-white font-semibold text-gray-800"
+                      disabled={workersLoading || workers.length === 0}
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-teal bg-white font-semibold text-gray-800 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                      <option value="b2569e5d-16a8-4c22-b1e1-88f1c3272e7c">Rahim Worker (Waste Dept)</option>
+                      {workersLoading ? (
+                        <option value="">Loading workers...</option>
+                      ) : workersError ? (
+                        <option value="">Failed to load workers</option>
+                      ) : workers.length === 0 ? (
+                        <option value="" disabled>No workers available in this department</option>
+                      ) : (
+                        <>
+                          <option value="">Select a field worker...</option>
+                          {workers.map((worker) => (
+                            <option key={worker.id} value={worker.id}>
+                              {worker.name}
+                            </option>
+                          ))}
+                        </>
+                      )}
                     </select>
+                    {workersError && (
+                      <span className="text-[10px] text-red-500 font-semibold mt-0.5 block">{workersError}</span>
+                    )}
                   </div>
                 )}
                 <div className="space-y-1.5 md:col-span-2">
@@ -428,6 +570,48 @@ export default function ComplaintDetailsPage() {
                   </button>
                 </div>
               </form>
+
+              {/* Category Override Section */}
+              <div className="pt-4 border-t border-gray-100 space-y-3">
+                <div>
+                  <h4 className="text-xs font-black text-gray-800 uppercase tracking-wider">AI Category Override</h4>
+                  <p className="text-[10px] text-gray-400 font-semibold">Change the AI-assigned category of this complaint if it was misclassified.</p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-end gap-4">
+                  <div className="space-y-1.5 w-full sm:max-w-xs">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">New Category</label>
+                    <select
+                      value={overrideCategory}
+                      onChange={(e) => setOverrideCategory(e.target.value)}
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-teal bg-white font-semibold text-gray-800"
+                    >
+                      <option value="Waterlogging">Waterlogging</option>
+                      <option value="Road Repair">Road Repair</option>
+                      <option value="Waste Management">Waste Management</option>
+                      <option value="Electricity">Electricity</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCategoryOverride}
+                    disabled={isOverriding || !overrideCategory}
+                    className="bg-brand-teal hover:bg-brand-teal-hover text-white text-xs font-bold py-3 px-6 rounded-xl transition-all shadow-md active:scale-[0.98] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isOverriding ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      "Override Category"
+                    )}
+                  </button>
+                </div>
+                {overrideError && (
+                  <p className="text-red-500 text-xs font-semibold">{overrideError}</p>
+                )}
+              </div>
             </div>
           )}
 
@@ -464,7 +648,7 @@ export default function ComplaintDetailsPage() {
       {/* Global Footer */}
       <footer className="bg-slate-100/50 border-t border-slate-200 mt-auto print:hidden">
         <div className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center text-xs font-semibold text-gray-500 gap-4">
-          <span>&copy; 2024 MuniFix Ctg. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <a href="#departments" className="hover:text-brand-teal transition-colors">Departments</a>
             <a href="#privacy" className="hover:text-brand-teal transition-colors">Privacy Policy</a>

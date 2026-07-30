@@ -2,19 +2,45 @@
 
 import React from "react";
 
-export default function StatusDistribution() {
+interface StatusDistributionProps {
+  complaints?: any[];
+}
+
+export default function StatusDistribution({ complaints = [] }: StatusDistributionProps) {
   // SVG Donut circle parameters
   const radius = 55;
   const strokeWidth = 14;
   const circumference = 2 * Math.PI * radius; // ~345.57
 
-  // Data values: Resolved (70%), In Progress (18%), Assigned (7%), Pending (5%)
+  // Count by status
+  let pendingCount = 0;
+  let assignedCount = 0;
+  let inProgressCount = 0;
+  let resolvedCount = 0;
+
+  complaints.forEach((c) => {
+    const status = (c.status || "").toLowerCase();
+    if (status === "pending") pendingCount++;
+    else if (status === "assigned" || status === "assign") assignedCount++;
+    else if (status === "in_progress") inProgressCount++;
+    else if (status === "resolved") resolvedCount++;
+  });
+
+  const total = pendingCount + assignedCount + inProgressCount + resolvedCount;
+  
+  const getPercentage = (count: number) => {
+    if (total === 0) return 0;
+    return Math.round((count / total) * 100);
+  };
+
   const data = [
-    { label: "Resolved", percentage: 70, color: "#10b981", bgClass: "bg-emerald-500" },
-    { label: "In Progress", percentage: 18, color: "#f59e0b", bgClass: "bg-amber-500" },
-    { label: "Assigned", percentage: 7, color: "#1d4ed8", bgClass: "bg-[#1d4ed8]" },
-    { label: "Pending", percentage: 5, color: "#94a3b8", bgClass: "bg-slate-400" },
+    { label: "Resolved", percentage: getPercentage(resolvedCount), color: "#10b981", bgClass: "bg-emerald-500" },
+    { label: "In Progress", percentage: getPercentage(inProgressCount), color: "#f59e0b", bgClass: "bg-amber-500" },
+    { label: "Assigned", percentage: getPercentage(assignedCount), color: "#1d4ed8", bgClass: "bg-[#1d4ed8]" },
+    { label: "Pending", percentage: getPercentage(pendingCount), color: "#94a3b8", bgClass: "bg-slate-400" },
   ];
+
+  const resolvedPct = total > 0 ? Math.round((resolvedCount / total) * 100) : 0;
 
   // Compute stroke offsets consecutively
   let currentOffset = 0;
@@ -66,7 +92,7 @@ export default function StatusDistribution() {
         {/* Center Text labels */}
         <div className="absolute flex flex-col items-center justify-center text-center">
           <span className="text-2xl font-black text-slate-900 leading-none">
-            100%
+            {resolvedPct}%
           </span>
           <span className="text-[10px] font-extrabold text-slate-450 uppercase tracking-wider mt-1 block">
             Compliance

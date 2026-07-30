@@ -1,17 +1,19 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Trash2 } from "lucide-react";
 
 export interface ComplaintItem {
   id: string; // e.g. "FIX-8842"
   category: string; // e.g. "Water Leakage"
   department: string; // e.g. "Water Supply"
+  departmentId?: number;
   departmentDotColor: string; // e.g. "bg-sky-500"
   priority: "Critical" | "High" | "Medium" | "Low";
   status: "Pending" | "In Progress" | "Assigned" | "Resolved" | "Under Review";
   dateReported: string; // e.g. "Oct 24, 2024, 09:12 AM"
   thumbnail: string; // e.g. "/water.png"
+  aiConfidence?: number | null;
 }
 
 interface ComplaintsTableProps {
@@ -19,6 +21,9 @@ interface ComplaintsTableProps {
   totalCount?: number;
   currentPage?: number;
   onPageChange?: (page: number) => void;
+  onAssignClick?: (item: ComplaintItem) => void;
+  onStatusChange?: (id: string, newStatus: string) => void;
+  onDeleteClick?: (id: string) => void;
 }
 
 export default function ComplaintsTable({
@@ -26,6 +31,9 @@ export default function ComplaintsTable({
   totalCount = 1248,
   currentPage = 1,
   onPageChange,
+  onAssignClick,
+  onStatusChange,
+  onDeleteClick,
 }: ComplaintsTableProps) {
   
   // Custom Priority Badge with dot
@@ -62,6 +70,14 @@ export default function ComplaintsTable({
     );
   };
 
+  const itemsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage));
+  
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pages.push(i);
+  }
+
   return (
     <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden font-sans w-full">
       <div className="overflow-x-auto">
@@ -89,6 +105,9 @@ export default function ComplaintsTable({
               </th>
               <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 Date Reported
+              </th>
+              <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
+                Actions
               </th>
             </tr>
           </thead>
@@ -120,9 +139,17 @@ export default function ComplaintsTable({
 
                 {/* Category */}
                 <td className="py-4.5 px-6 vertical-middle">
-                  <span className="text-sm font-bold text-slate-800 leading-tight">
-                    {item.category}
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-bold text-slate-800 leading-tight">
+                      {item.category}
+                    </span>
+                    {item.aiConfidence !== undefined && item.aiConfidence !== null && item.aiConfidence < 70 && (
+                      <span className="inline-flex items-center gap-1 bg-red-50 text-red-650 px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase max-w-max border border-red-100/60 leading-none">
+                        <AlertTriangle className="w-2.5 h-2.5 text-red-500 shrink-0" />
+                        <span>Needs Manual Review</span>
+                      </span>
+                    )}
+                  </div>
                 </td>
 
                 {/* Department */}
@@ -149,6 +176,37 @@ export default function ComplaintsTable({
                 <td className="py-4.5 px-6 text-xs font-bold text-slate-500 vertical-middle">
                   {item.dateReported}
                 </td>
+
+                {/* Actions */}
+                <td className="py-4.5 px-6 text-right vertical-middle">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => onAssignClick?.(item)}
+                      className="p-1.5 text-slate-400 hover:text-[#005c55] hover:bg-slate-50 rounded-lg transition-all cursor-pointer inline-flex active:scale-90"
+                      title="Assign Field Worker"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                    </button>
+                    <select
+                      value={item.status}
+                      onChange={(e) => onStatusChange?.(item.id, e.target.value)}
+                      className="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-700 font-bold"
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Assigned">Assigned</option>
+                      <option value="Resolved">Resolved</option>
+                      <option value="Under Review">Under Review</option>
+                    </select>
+                    <button
+                      onClick={() => onDeleteClick?.(item.id)}
+                      className="p-1.5 text-slate-400 hover:text-red-655 hover:bg-red-50 rounded-lg transition-all cursor-pointer inline-flex active:scale-90"
+                      title="Delete Complaint"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -163,27 +221,36 @@ export default function ComplaintsTable({
 
         {/* Page controls */}
         <div className="flex items-center gap-1.5">
-          <button className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-[#005c55] hover:bg-slate-50 transition-colors cursor-pointer shrink-0">
+          <button 
+            disabled={currentPage === 1}
+            onClick={() => onPageChange?.(currentPage - 1)}
+            className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-[#005c55] hover:bg-slate-50 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <ChevronLeft className="w-4 h-4" />
           </button>
           
-          <button className="bg-[#005c55] text-white rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer shadow-sm shadow-[#005c55]/20">
-            1
-          </button>
-          <button className="bg-white border border-slate-200 text-slate-700 hover:text-[#005c55] hover:bg-slate-50 rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer transition-colors">
-            2
-          </button>
-          <button className="bg-white border border-slate-200 text-slate-700 hover:text-[#005c55] hover:bg-slate-50 rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer transition-colors">
-            3
-          </button>
-          
-          <span className="text-slate-400 text-xs font-bold px-1 select-none">...</span>
+          {pages.map((p) => {
+            const isCurrent = p === currentPage;
+            return (
+              <button
+                key={p}
+                onClick={() => onPageChange?.(p)}
+                className={`rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer transition-all ${
+                  isCurrent
+                    ? "bg-[#005c55] text-white shadow-sm shadow-[#005c55]/20"
+                    : "bg-white border border-slate-200 text-slate-700 hover:text-[#005c55] hover:bg-slate-50"
+                }`}
+              >
+                {p}
+              </button>
+            );
+          })}
 
-          <button className="bg-white border border-slate-200 text-slate-700 hover:text-[#005c55] hover:bg-slate-50 rounded-lg w-8 h-8 flex items-center justify-center text-xs font-extrabold cursor-pointer transition-colors">
-            312
-          </button>
-
-          <button className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-[#005c55] hover:bg-slate-50 transition-colors cursor-pointer shrink-0">
+          <button 
+            disabled={currentPage === totalPages}
+            onClick={() => onPageChange?.(currentPage + 1)}
+            className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-[#005c55] hover:bg-slate-50 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -191,3 +258,4 @@ export default function ComplaintsTable({
     </div>
   );
 }
+

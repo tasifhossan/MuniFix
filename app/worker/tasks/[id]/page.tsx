@@ -1,107 +1,190 @@
 "use client";
 
-import React from "react";
-import { useParams } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { 
   MapPin, 
   Navigation, 
   Search, 
-  Bell 
+  Bell,
+  Loader2,
+  AlertTriangle 
 } from "lucide-react";
 import WorkerSidebar from "@/components/WorkerSidebar";
 import WorkerActionCenter from "@/components/WorkerActionCenter";
+import { fetchComplaintById, fetchMyProfile, updateComplaintStatus } from "@/lib/api";
 
 export default function WorkerTaskDetailPage() {
   const params = useParams();
   const taskId = params.id as string;
+  const router = useRouter();
 
-  // Default details (from the screenshot - Task #8241)
-  let taskDetails: {
-    id: string;
-    title: string;
-    location: string;
-    category: string;
-    priority: string;
-    description: string;
-    images: string[];
-    statusBadge: string;
-    status: "In Progress" | "Assigned" | "Resolved";
-    assignedDate: string;
-  } = {
-    id: taskId || "8241",
-    title: "Water Pipe Leakage - GEC Circle",
-    location: "South Corner, GEC Intersection, Chattogram",
-    category: "Water & Sanitation",
-    priority: "Critical (Level 1)",
-    description: "Main distribution pipe has developed a significant crack near the metro junction. Water is pooling rapidly across the pedestrian walkway. Risk of road surface erosion if not contained within the next 4 hours.",
-    images: ["/clogged-drain.png", "/road-pothole.png"],
-    statusBadge: "URGENT",
-    status: "In Progress",
-    assignedDate: "Dec 12, 2024"
+  const [task, setTask] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadTaskAndProfile() {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const [taskData, profileData] = await Promise.all([
+          fetchComplaintById(taskId),
+          fetchMyProfile().catch(() => null)
+        ]);
+
+        if (taskData.success) {
+          setTask(taskData.complaint);
+        } else {
+          throw new Error(taskData.message || "Failed to load task details");
+        }
+
+        if (profileData) {
+          setProfile(profileData.user ?? profileData);
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to load task details");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (taskId) {
+      loadTaskAndProfile();
+    }
+  }, [taskId]);
+
+  const handleStatusUpdate = async (data: { status: string; notes: string; file: File | null }) => {
+    try {
+      let payload: any;
+      const dbStatus = data.status.toLowerCase().replace(" ", "_");
+
+      if (data.file) {
+        const formData = new FormData();
+        formData.append("status", dbStatus);
+        formData.append("notes", data.notes);
+        formData.append("images", data.file); // Match multer array images key
+        payload = formData;
+      } else {
+        payload = {
+          status: dbStatus,
+          notes: data.notes
+        };
+      }
+
+      const res = await updateComplaintStatus(taskId, payload);
+      if (res.success) {
+        setTask(res.complaint);
+        alert("Task status successfully updated!");
+      } else {
+        throw new Error(res.message || "Failed to update status");
+      }
+    } catch (err: any) {
+      alert(`Error updating task: ${err.message || "Something went wrong"}`);
+      throw err;
+    }
   };
 
-  // If task-1, override details to match GEC Circle pipe burst
-  if (taskId === "task-1") {
-    taskDetails = {
-      id: "task-1",
-      title: "Main Pipe Burst at GEC Circle",
-      location: "GEC Circle Intersection, Nasirabad, Chattogram",
-      category: "Water & Sanitation",
-      priority: "Critical (Level 1)",
-      description: "Main distribution pipe has developed a significant crack near the GEC Circle intersection. Water is pooling rapidly across the pedestrian walkway. Risk of road surface erosion if not contained within the next 4 hours.",
-      images: ["/clogged-drain.png", "/road-pothole.png"],
-      statusBadge: "URGENT",
-      status: "In Progress" as const,
-      assignedDate: "Dec 12, 2024"
+  const mapPriority = (p: string) => {
+    const map: Record<string, string> = {
+      critical: "Critical (Level 1)",
+      high: "High",
+      medium: "Medium",
+      low: "Low",
     };
-  } else if (taskId === "task-2") {
-    taskDetails = {
-      id: "task-2",
-      title: "Multiple Street Light Failure",
-      location: "CDA Avenue, Block B, Dampara, Chattogram",
-      category: "Streetlight",
-      priority: "High",
-      description: "Residents report 3 lights are out between pole #442 and #445. The block feels unsafe at night.",
-      images: ["/street-light.png"],
-      statusBadge: "HIGH",
-      status: "Assigned" as const,
-      assignedDate: "Dec 12, 2024"
+    return map[p?.toLowerCase()] ?? "Medium";
+  };
+
+  const mapStatus = (s: string) => {
+    const map: Record<string, "Assigned" | "In Progress" | "Resolved"> = {
+      assigned: "Assigned",
+      in_progress: "In Progress",
+      resolved: "Resolved",
+      pending: "Assigned",
+      cancelled: "Resolved",
     };
-  } else if (taskId === "task-3") {
-    taskDetails = {
-      id: "task-3",
-      title: "Waste Overflow Collection",
-      location: "Opposite Central Mosque, Ward 15, Chattogram",
-      category: "Waste Disposal",
-      priority: "Medium",
-      description: "Main collection bin has not been cleared for three days. Foul smell is spreading in the residential block.",
-      images: ["/garbage-overflow.png"],
-      statusBadge: "MEDIUM",
-      status: "In Progress" as const,
-      assignedDate: "Dec 12, 2024"
+    return map[s?.toLowerCase()] ?? "Assigned";
+  };
+
+  const categoryImage = (cat: string): string => {
+    const map: Record<string, string> = {
+      "Waterlogging": "/clogged-drain.png",
+      "Road Repair": "/road-pothole.png",
+      "Waste Management": "/garbage-overflow.png",
+      "Electricity": "/street-light.png",
+      "Street Light": "/street-light.png",
     };
-  } else if (taskId === "task-4") {
-    taskDetails = {
-      id: "task-4",
-      title: "Sidewalk Surface Patching",
-      location: "Agrabad Residential Area, Park Street, Chattogram",
-      category: "Road & Sidewalk",
-      priority: "Low",
-      description: "Pavement slabs have cracked and shifted on Park Street sidewalk. Minimal risk but needs scheduling.",
-      images: ["/road-pothole.png"],
-      statusBadge: "LOW",
-      status: "Assigned" as const,
-      assignedDate: "Dec 12, 2024"
-    };
+    return map[cat] ?? "/road-pothole.png";
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
+        <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-10 h-10 text-[#005c55] animate-spin" />
+            <p className="text-slate-500 text-sm font-bold">Loading task details...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  // Format task ID for display
-  const displayId = taskDetails.id.startsWith("task-")
-    ? `Task #${taskDetails.id.replace("task-", "824")}`
-    : `Task #${taskDetails.id}`;
+  if (error || !task) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
+        <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-col items-center gap-4 text-center max-w-sm px-6">
+            <AlertTriangle className="w-10 h-10 text-red-400" />
+            <p className="text-slate-700 font-bold">Failed to load task</p>
+            <p className="text-slate-400 text-xs">{error || "Task not found"}</p>
+            <button
+              onClick={() => router.push("/worker")}
+              className="mt-4 bg-[#005c55] text-white text-xs font-bold px-4 py-2 rounded-xl"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const displayId = `Task #${task.id.substring(0, 8)}`;
+  const title = task.category ? `${task.category} Issue` : "Assigned Task";
+  const location = task.address || task.street || "Chattogram Area";
+  const category = task.category;
+  const priority = mapPriority(task.priority);
+  const status = mapStatus(task.status);
+  const statusBadge = task.priority?.toUpperCase();
+  const assignedDate = new Date(task.created_at).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+
+  // Extract images list safely
+  let images: string[] = [];
+  if (task.image_url) {
+    if (Array.isArray(task.image_url)) {
+      images = task.image_url;
+    } else if (typeof task.image_url === "string") {
+      if (task.image_url.startsWith("[")) {
+        try {
+          images = JSON.parse(task.image_url);
+        } catch {
+          images = [task.image_url];
+        }
+      } else {
+        images = [task.image_url];
+      }
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50/30 flex font-sans">
+    <div className="min-h-screen bg-[#f8fafc] flex font-sans">
       {/* Sidebar Navigation */}
       <WorkerSidebar activeNav="complaints" />
 
@@ -113,7 +196,7 @@ export default function WorkerTaskDetailPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/60 pb-5">
             {/* Breadcrumb trail */}
             <div className="flex items-center text-xs font-semibold text-gray-400 select-none">
-              <span className="hover:text-brand-teal transition-colors cursor-pointer">Complaints</span>
+              <span className="hover:text-brand-teal transition-colors cursor-pointer" onClick={() => router.push("/worker")}>Complaints</span>
               <span className="mx-2 text-slate-300 font-normal">›</span>
               <span className="text-slate-800 font-bold">{displayId}</span>
             </div>
@@ -137,12 +220,17 @@ export default function WorkerTaskDetailPage() {
               </button>
 
               {/* Profile Avatar */}
-              <div className="relative w-9 h-9 rounded-full overflow-hidden border border-slate-200 shrink-0 shadow-sm">
-                <img
-                  src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150&auto=format&fit=crop"
-                  alt="Abul Hossain"
-                  className="w-full h-full object-cover"
-                />
+              <div className="flex items-center space-x-3">
+                <div className="relative w-9 h-9 rounded-full overflow-hidden border border-slate-200 shrink-0 shadow-sm">
+                  <img
+                    src={profile?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150&auto=format&fit=crop"}
+                    alt={profile?.name || "Worker"}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <span className="text-xs font-bold text-slate-700 hidden sm:inline">
+                  {profile?.name || "Worker"}
+                </span>
               </div>
             </div>
           </div>
@@ -152,23 +240,26 @@ export default function WorkerTaskDetailPage() {
             <div>
               {/* Priority badge & Assignment date */}
               <div className="flex items-center">
-                <span className="bg-red-100 text-red-700 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md shadow-sm">
-                  {taskDetails.statusBadge}
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md shadow-sm ${
+                  task.priority === "critical" ? "bg-red-100 text-red-700" :
+                  task.priority === "high" ? "bg-amber-100 text-amber-700" : "bg-teal-100 text-teal-700"
+                }`}>
+                  {statusBadge}
                 </span>
                 <span className="text-xs font-bold text-gray-400 ml-3">
-                  Assigned: {taskDetails.assignedDate}
+                  Assigned: {assignedDate}
                 </span>
               </div>
               
               {/* Task Title */}
               <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight mt-2.5 leading-snug">
-                {taskDetails.title}
+                {title}
               </h2>
 
               {/* Location */}
               <div className="flex items-center text-xs sm:text-sm font-semibold text-gray-500 mt-2">
                 <MapPin className="w-4 h-4 mr-1 text-gray-450 mt-0.5 shrink-0" />
-                <span>{taskDetails.location}</span>
+                <span>{location}</span>
               </div>
             </div>
 
@@ -193,7 +284,7 @@ export default function WorkerTaskDetailPage() {
                     Complaint Information
                   </h3>
                   <span className="inline-flex px-3 py-1 rounded-full text-xs font-bold text-teal-800 bg-teal-50 border border-teal-100/50 shadow-inner">
-                    In Progress
+                    {status}
                   </span>
                 </div>
 
@@ -204,7 +295,7 @@ export default function WorkerTaskDetailPage() {
                       Category
                     </span>
                     <span className="text-sm font-black text-gray-800">
-                      {taskDetails.category}
+                      {category}
                     </span>
                   </div>
                   <div>
@@ -212,8 +303,11 @@ export default function WorkerTaskDetailPage() {
                       Priority
                     </span>
                     <span className="flex items-center gap-1.5 text-sm font-black text-gray-800">
-                      <span className="w-2.5 h-2.5 bg-red-600 rounded-full" />
-                      {taskDetails.priority}
+                      <span className={`w-2.5 h-2.5 rounded-full ${
+                        task.priority === "critical" ? "bg-red-600" :
+                        task.priority === "high" ? "bg-amber-500" : "bg-teal-500"
+                      }`} />
+                      {priority}
                     </span>
                   </div>
                 </div>
@@ -224,7 +318,7 @@ export default function WorkerTaskDetailPage() {
                     Description
                   </span>
                   <p className="text-sm text-gray-600 font-semibold leading-relaxed">
-                    {taskDetails.description}
+                    {task.description}
                   </p>
                 </div>
 
@@ -234,15 +328,25 @@ export default function WorkerTaskDetailPage() {
                     Reported Media
                   </span>
                   <div className="grid grid-cols-2 gap-4 max-w-md w-full">
-                    {taskDetails.images.map((imgUrl, idx) => (
-                      <div key={idx} className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-sm">
+                    {images.length > 0 ? (
+                      images.map((imgUrl, idx) => (
+                        <div key={idx} className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 border border-slate-150 shadow-sm">
+                          <img
+                            src={imgUrl}
+                            alt="Reported media proof"
+                            className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                          />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 border border-slate-150 shadow-sm">
                         <img
-                          src={imgUrl}
-                          alt="Reported media proof"
-                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                          src={categoryImage(task.category)}
+                          alt="Reported category fallback"
+                          className="w-full h-full object-cover"
                         />
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
 
@@ -275,7 +379,7 @@ export default function WorkerTaskDetailPage() {
 
             {/* Right 1/3 Side Control Column */}
             <div className="w-full lg:w-auto shrink-0">
-              <WorkerActionCenter initialStatus={taskDetails.status} />
+              <WorkerActionCenter initialStatus={status} onUpdate={handleStatusUpdate} />
             </div>
           </div>
         </main>

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   Clock, 
   Lock, 
@@ -12,47 +13,157 @@ import {
   FileEdit,
   ChevronDown
 } from "lucide-react";
-import AdminHeader from "@/components/AdminHeader";
+import Navbar from "@/components/Navbar";
 import LocationMap from "@/components/LocationMap";
 import ActivityTimeline from "@/components/ActivityTimeline";
+import { fetchComplaintById, editComplaint, updateComplaintStatus } from "@/lib/api";
 
 export default function EditComplaintPage() {
+  const [id, setId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false);
   
   // Form fields state
-  const [category, setCategory] = useState("Road Repairs & Potholes");
-  const [incidentDate, setIncidentDate] = useState("10/15/2024");
-  const [locationDetail, setLocationDetail] = useState("Agrabad Commercial Area, near GEC Circle");
-  const [description, setDescription] = useState(
-    "Large pothole forming in the middle of the service road. It's causing significant traffic slowdowns during peak hours and is hazardous for motorcyclists at night due to poor lighting in this specific stretch."
-  );
+  const [category, setCategory] = useState("Other");
+  const [locationDetail, setLocationDetail] = useState("");
+  const [description, setDescription] = useState("");
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const router = useRouter();
 
-  const handleUpdate = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const idParam = params.get("id");
+      if (idParam) {
+        setId(idParam);
+      } else {
+        setError("Missing complaint ID.");
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!id) return;
+    async function loadComplaint() {
+      try {
+        setLoading(true);
+        const res = await fetchComplaintById(id);
+        if (res.success) {
+          const c = res.complaint;
+          if (c.status !== "pending") {
+            alert("Only pending complaints can be edited.");
+            router.replace(`/complaints/${c.id}`);
+            return;
+          }
+          setCategory(c.category);
+          setDescription(c.description);
+          setLocationDetail(c.latitude && c.longitude ? `${parseFloat(c.latitude).toFixed(6)}, ${parseFloat(c.longitude).toFixed(6)}` : "Chattogram Area");
+          setExistingImages(Array.isArray(c.image_url) ? c.image_url : (c.image_url ? [c.image_url] : []));
+          setIsLocked(false);
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to load complaint.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadComplaint();
+  }, [id, router]);
+
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLocked) return;
-    alert("Complaint updated successfully!");
-  };
+    try {
+      setLoading(true);
+      
+      let lat: number | undefined;
+      let lng: number | undefined;
+      const parts = locationDetail.split(",");
+      if (parts.length === 2) {
+        const parsedLat = parseFloat(parts[0].trim());
+        const parsedLng = parseFloat(parts[1].trim());
+        if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+          lat = parsedLat;
+          lng = parsedLng;
+        }
+      }
 
-  const handleCancel = () => {
-    if (isLocked) return;
-    if (confirm("Are you sure you want to cancel this complaint?")) {
-      alert("Complaint successfully cancelled!");
+      const res = await editComplaint(id, {
+        category,
+        description,
+        latitude: lat,
+        longitude: lng
+      });
+      if (res.success) {
+        alert("Complaint updated successfully!");
+        router.push(`/complaints/${id}`);
+      }
+    } catch (err: any) {
+      alert(`Failed to update complaint: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const toggleSimulation = () => {
-    setIsLocked(!isLocked);
+  const handleCancel = async () => {
+    if (isLocked) return;
+    if (confirm("Are you sure you want to cancel this complaint?")) {
+      try {
+        setLoading(true);
+        const res = await updateComplaintStatus(id, {
+          status: "cancelled",
+          notes: "Cancelled by citizen on edit screen.",
+        });
+        if (res.success) {
+          alert("Complaint successfully cancelled!");
+          router.push(`/complaints/${id}`);
+        }
+      } catch (err: any) {
+        alert(`Failed to cancel complaint: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
+        <Navbar activeNav="complaints" isDashboard />
+        <div className="flex-grow flex flex-col items-center justify-center py-20">
+          <Clock className="w-10 h-10 text-[#005c55] animate-spin" />
+          <p className="text-gray-500 text-sm font-bold mt-4 animate-pulse">Loading complaint details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !id) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
+        <Navbar activeNav="complaints" isDashboard />
+        <div className="flex-grow flex items-center justify-center py-20">
+          <div className="bg-white rounded-3xl border border-gray-150 py-16 px-6 text-center shadow-sm max-w-md w-full">
+            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4 stroke-[1.5]" />
+            <h3 className="text-lg font-bold text-gray-900">Failed to Load Complaint</h3>
+            <p className="text-gray-500 text-sm mt-2 leading-relaxed">{error || "No ID specified."}</p>
+            <Link href="/dashboard">
+              <button className="mt-6 bg-brand-teal hover:bg-brand-teal-hover text-white text-xs font-bold px-6 py-3 rounded-xl transition-all shadow-md cursor-pointer">
+                Back to Dashboard
+              </button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc]/50 flex flex-col font-sans">
       {/* Global Header - full-width stretching across the top */}
-      <AdminHeader 
-        variant="logs" 
-        title="MuniFix Ctg" 
-        userRole="Rahat Hossain" 
-        userSubtitle="City Admin" 
-      />
+      <Navbar activeNav="complaints" isDashboard />
 
       {/* Breadcrumb section */}
       <div className="max-w-[1200px] w-full mx-auto px-6 sm:px-8 pt-8">
@@ -61,14 +172,14 @@ export default function EditComplaintPage() {
             My Reports
           </Link>
           <span className="text-slate-300 font-semibold">&rsaquo;</span>
-          <span className="text-slate-600">Edit Complaint</span>
+          <span className="text-slate-605">Edit Complaint</span>
         </div>
       </div>
 
       {/* Title & Status Area */}
       <div className="max-w-[1200px] w-full mx-auto px-6 sm:px-8 pt-4 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-none select-all">
-          Complaint #CTG-88421
+          Complaint #{id}
         </h1>
 
         {/* Dynamic status badge */}
@@ -94,48 +205,29 @@ export default function EditComplaintPage() {
         <div className="flex-1">
           <form onSubmit={handleUpdate} className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
             
-            {/* Category and Incident Date row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              
-              {/* Category selector */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider select-none">
-                  Complaint Category
-                </label>
-                <div className="relative">
-                  <select
-                    disabled={isLocked}
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className={`w-full bg-white border rounded-xl py-2.5 pl-4 pr-10 text-sm font-semibold text-slate-700 focus:outline-none focus:border-[#005c55] focus:ring-1 focus:ring-[#005c55] appearance-none cursor-pointer transition-all shadow-sm ${
-                      isLocked ? "bg-slate-50 text-slate-450 border-slate-200 cursor-not-allowed" : "border-slate-205 hover:border-slate-300"
-                    }`}
-                  >
-                    <option value="Road Repairs & Potholes">Road Repairs & Potholes</option>
-                    <option value="Waste Disposal">Waste Disposal</option>
-                    <option value="Waterlogging">Waterlogging</option>
-                    <option value="Streetlight">Streetlight</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-400">
-                    <ChevronDown className="w-4 h-4" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Incident date */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider select-none">
-                  Incident Date
-                </label>
-                <input
+            {/* Category selection */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider select-none">
+                Complaint Category
+              </label>
+              <div className="relative">
+                <select
                   disabled={isLocked}
-                  type="text"
-                  value={incidentDate}
-                  onChange={(e) => setIncidentDate(e.target.value)}
-                  className={`w-full px-4 py-2.5 border rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:border-[#005c55] focus:ring-1 focus:ring-[#005c55] transition-all shadow-sm ${
-                    isLocked ? "bg-slate-50 text-slate-450 border-slate-200 cursor-not-allowed" : "border-slate-205 hover:border-slate-300 bg-white"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className={`w-full bg-white border rounded-xl py-2.5 pl-4 pr-10 text-sm font-semibold text-slate-700 focus:outline-none focus:border-[#005c55] focus:ring-1 focus:ring-[#005c55] appearance-none cursor-pointer transition-all shadow-sm ${
+                    isLocked ? "bg-slate-50 text-slate-450 border-slate-200 cursor-not-allowed" : "border-slate-205 hover:border-slate-300"
                   }`}
-                />
+                >
+                  <option value="Waterlogging">Waterlogging</option>
+                  <option value="Road Repair">Road Repair</option>
+                  <option value="Waste Management">Waste Management</option>
+                  <option value="Electricity">Electricity</option>
+                  <option value="Other">Other</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-400">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
               </div>
             </div>
 
@@ -175,44 +267,24 @@ export default function EditComplaintPage() {
             </div>
 
             {/* Attached media */}
-            <div className="space-y-3">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider select-none">
-                Attached Media (2)
-              </label>
-              <div className="grid grid-cols-3 gap-4 max-w-md">
-                {/* Photo 1 */}
-                <div className="relative aspect-square bg-slate-50 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
-                  <img
-                    src="/pothole.png"
-                    alt="Evidence 1"
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
+            {existingImages.length > 0 && (
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider select-none">
+                  Attached Media ({existingImages.length})
+                </label>
+                <div className="grid grid-cols-3 gap-4 max-w-md">
+                  {existingImages.map((imgUrl, idx) => (
+                    <div key={idx} className="relative aspect-square bg-slate-50 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
+                      <img
+                        src={imgUrl}
+                        alt={`Evidence ${idx + 1}`}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </div>
+                  ))}
                 </div>
-
-                {/* Photo 2 */}
-                <div className="relative aspect-square bg-slate-50 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
-                  <img
-                    src="/street_light.png"
-                    alt="Evidence 2"
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-
-                {/* Add Photo placeholder */}
-                <button
-                  type="button"
-                  disabled={isLocked}
-                  className={`aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 text-slate-400 transition-all select-none ${
-                    isLocked 
-                      ? "border-slate-200 bg-slate-50 cursor-not-allowed" 
-                      : "border-slate-300 hover:border-[#005c55] hover:text-[#005c55] bg-white cursor-pointer active:scale-[0.97]"
-                  }`}
-                >
-                  <Camera className="w-5 h-5 text-current" />
-                  <span className="text-[10px] font-bold">Add</span>
-                </button>
               </div>
-            </div>
+            )}
 
             {/* Divider line */}
             <div className="border-t border-slate-100 pt-5" />
@@ -257,28 +329,13 @@ export default function EditComplaintPage() {
 
           {/* Activity Timeline list */}
           <ActivityTimeline />
-
-          {/* Simulate State Card */}
-          <div className="bg-[#e0e7ff]/40 border border-indigo-100 rounded-3xl p-5 shadow-sm font-sans space-y-3.5 select-none">
-            <h4 className="text-xs font-black text-indigo-500 uppercase tracking-widest leading-none">
-              Simulate State
-            </h4>
-            <button
-              onClick={toggleSimulation}
-              className="w-full bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold py-2.5 px-4 border border-slate-200 rounded-xl transition-all cursor-pointer select-none active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5"
-            >
-              {isLocked ? <FileEdit className="w-4 h-4 text-[#005c55]" /> : <Lock className="w-4 h-4 text-amber-500" />}
-              <span>Toggle Locked/Pending State</span>
-            </button>
-          </div>
         </div>
 
       </div>
 
-      {/* Global Simple Footer */}
       <footer className="bg-slate-100/50 border-t border-slate-200 mt-auto select-none">
         <div className="max-w-[1200px] w-full mx-auto px-6 sm:px-8 py-6 flex flex-col md:flex-row justify-between items-center text-xs font-semibold text-slate-500 gap-4">
-          <span>&copy; 2024 MuniFix Ctg. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <a href="#departments" className="hover:text-[#005c55] transition-colors">Departments</a>
             <a href="#privacy" className="hover:text-[#005c55] transition-colors">Privacy Policy</a>

@@ -127,7 +127,7 @@ export default function HelpPage() {
       {/* Global Simple Footer */}
       <footer className="bg-slate-100/50 border-t border-slate-200 mt-auto">
         <div className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center text-xs font-semibold text-gray-500 gap-4">
-          <span>&copy; 2024 MuniFix Ctg. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <a href="#departments" className="hover:text-brand-teal transition-colors">Departments</a>
             <a href="#privacy" className="hover:text-brand-teal transition-colors">Privacy Policy</a>

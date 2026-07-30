@@ -11,6 +11,9 @@ import {
   HelpCircle,
   LogOut
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import WorkerSidebar from "./WorkerSidebar";
+import AdminSidebar from "./AdminSidebar";
 
 interface SidebarProps {
   onItemSelect?: (item: string) => void;
@@ -18,6 +21,19 @@ interface SidebarProps {
 
 export default function Sidebar({ onItemSelect }: SidebarProps) {
   const pathname = usePathname();
+  const { logout, user } = useAuth();
+
+  // Dynamic delegation for each type of user
+  if (user?.role === "field_worker") {
+    return <WorkerSidebar />;
+  }
+
+  if (user?.role === "dept_admin" || user?.role === "super_admin") {
+    const adminActiveNav = 
+      pathname === "/help" ? "help" :
+      pathname === "/settings" ? "settings" : undefined;
+    return <AdminSidebar role={user.role === "super_admin" ? "superadmin" : "admin"} activeNav={adminActiveNav} />;
+  }
 
   const mainNavItems = [
     { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -36,11 +52,20 @@ export default function Sidebar({ onItemSelect }: SidebarProps) {
     // Highlight if pathname matches exactly, or starts with the href (excluding root /)
     const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
+    const handleClick = async (e: React.MouseEvent) => {
+      if (item.id === "logout") {
+        e.preventDefault();
+        await logout();
+      } else {
+        onItemSelect?.(item.id);
+      }
+    };
+
     return (
       <Link
         key={item.id}
         href={item.href}
-        onClick={() => onItemSelect?.(item.id)}
+        onClick={handleClick}
         className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all duration-250 cursor-pointer active:scale-[0.99] select-none ${
           isActive
             ? "bg-brand-teal text-white shadow-md shadow-brand-teal/15"

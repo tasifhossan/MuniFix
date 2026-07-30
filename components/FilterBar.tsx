@@ -12,9 +12,10 @@ interface FilterBarProps {
     date: string;
   }) => void;
   onClearAll: () => void;
+  disabled?: boolean;
 }
 
-export default function FilterBar({ onSearch, onFilterChange, onClearAll }: FilterBarProps) {
+export default function FilterBar({ onSearch, onFilterChange, onClearAll, disabled = false }: FilterBarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState({
     category: "",
@@ -86,19 +87,20 @@ export default function FilterBar({ onSearch, onFilterChange, onClearAll }: Filt
     options: { value: string; label: string }[],
     isDate = false
   ) => {
-    const isOpen = openDropdown === name;
+    const isOpen = openDropdown === name && !disabled;
     const selectedValue = activeFilters[name];
     const selectedOption = options.find((opt) => opt.value === selectedValue);
 
     return (
       <div className="relative">
         <button
-          onClick={() => toggleDropdown(name)}
+          onClick={() => !disabled && toggleDropdown(name)}
+          disabled={disabled}
           className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-sm font-semibold select-none transition-all duration-200 ${
             selectedValue
               ? "bg-teal-50 text-brand-teal border border-brand-teal/20"
               : "bg-slate-100 hover:bg-slate-200/80 text-gray-700"
-          }`}
+          } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           {isDate && <Calendar className="w-4 h-4 text-gray-500 mr-1" />}
           <span>{selectedOption ? selectedOption.label : label}</span>
@@ -137,14 +139,15 @@ export default function FilterBar({ onSearch, onFilterChange, onClearAll }: Filt
             type="text"
             placeholder="Search complaints by description or location..."
             value={searchQuery}
+            disabled={disabled}
             onChange={(e) => {
               const val = e.target.value;
               setSearchQuery(val);
               onSearch(val);
             }}
-            className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-brand-teal bg-white transition-all text-gray-800 placeholder-gray-400"
+            className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-brand-teal bg-white transition-all text-gray-800 placeholder-gray-400 disabled:bg-slate-50 disabled:text-gray-405 disabled:cursor-not-allowed"
           />
-          {searchQuery && (
+          {searchQuery && !disabled && (
             <button
               type="button"
               onClick={() => {
@@ -159,7 +162,8 @@ export default function FilterBar({ onSearch, onFilterChange, onClearAll }: Filt
         </div>
         <button
           type="submit"
-          className="bg-brand-teal text-white text-sm font-bold px-8 py-3.5 rounded-2xl hover:bg-brand-teal-hover transition-all duration-300 shadow-md shadow-brand-teal/10 hover:shadow-brand-teal/20 cursor-pointer"
+          disabled={disabled}
+          className="bg-brand-teal text-white text-sm font-bold px-8 py-3.5 rounded-2xl hover:bg-brand-teal-hover transition-all duration-300 shadow-md shadow-brand-teal/10 hover:shadow-brand-teal/20 cursor-pointer disabled:bg-teal-700/60 disabled:cursor-not-allowed"
         >
           Search
         </button>
@@ -180,8 +184,9 @@ export default function FilterBar({ onSearch, onFilterChange, onClearAll }: Filt
           <>
             <div className="h-6 w-[1px] bg-gray-200 mx-1 hidden sm:block" />
             <button
-              onClick={handleClear}
-              className="text-sm font-bold text-teal-600 hover:text-brand-teal hover:underline px-2 py-1 rounded transition-all"
+              onClick={() => !disabled && handleClear()}
+              disabled={disabled}
+              className="text-sm font-bold text-teal-600 hover:text-brand-teal hover:underline px-2 py-1 rounded transition-all disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
             >
               Clear all
             </button>

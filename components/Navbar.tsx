@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, Bell, Menu, X, ChevronDown, Globe, Mail, Phone } from "lucide-react";
+import { Search, Bell, Menu, X, ChevronDown, Globe, Mail, Phone, Loader2 } from "lucide-react";
 import NotificationDropdown, { NotificationItem } from "./NotificationDropdown";
-import { getActiveProfile, setActiveProfile, profiles, ActiveProfile } from "@/lib/api";
+import { fetchNotifications, markNotificationAsRead } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavbarProps {
   activeNav?: string;
@@ -23,31 +24,100 @@ export default function Navbar({
   user,
   isDashboard = false,
 }: NavbarProps) {
+  const { user: authUser } = useAuth();
+
+  const displayUser = user || (authUser ? {
+    name: authUser.name || authUser.email || "Citizen",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop"
+  } : null);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [activeProfile, setActiveProfileState] = useState<ActiveProfile>(getActiveProfile());
 
-  const handleProfileChange = (profile: ActiveProfile) => {
-    setActiveProfile(profile);
-    setActiveProfileState(profile);
-    setProfileDropdownOpen(false);
-    if (typeof window !== "undefined") {
-      window.location.reload();
+
+  // Live notifications from MuniFix backend
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+
+  const formatTime = (dateStr: string) => {
+    try {
+      const now = new Date();
+      const date = new Date(dateStr);
+      const diffMs = now.getTime() - date.getTime();
+      if (isNaN(diffMs) || diffMs < 0) return "Just now";
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays}d ago`;
+    } catch (e) {
+      return "Some time ago";
     }
   };
 
-  // Mock live notifications for MuniFix Ctg matching the screenshot
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    { id: 1, text: "Your complaint #CTG-8821 has been assigned", type: "complaint", time: "2m ago", read: false },
-    { id: 2, text: "New task assigned in Agrabad", type: "task", time: "15m ago", read: false },
-    { id: 3, text: "Monthly report is ready for Chattogram Municipal", type: "report", time: "1h ago", read: true },
-  ]);
+  const loadNotifications = async () => {
+    try {
+      setNotificationsLoading(true);
+      const data = await fetchNotifications();
+      if (data.success) {
+        const mapped = data.notifications.map((n: any) => ({
+          id: n.id,
+          text: n.message,
+          type: n.complaint_id ? "complaint" : "general",
+          time: formatTime(n.created_at),
+          read: n.is_read
+        }));
+        setNotifications(mapped);
+        setUnreadCount(mapped.filter((n: any) => !n.read).length);
+      }
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
 
-  const handleMarkAllRead = () => {
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? (localStorage.getItem("token") || localStorage.getItem("munifix_authtoken")) : null;
+    if (token) {
+      loadNotifications();
+    }
+  }, []);
+
+  const handleBellClick = () => {
+    const nextState = !notificationsOpen;
+    setNotificationsOpen(nextState);
+    if (nextState) {
+      loadNotifications();
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+    try {
+      await Promise.all(unreadIds.map(id => markNotificationAsRead(String(id))));
+    } catch (err) {
+      console.error("Failed to mark all as read:", err);
+    }
+  };
+
+  const handleNotificationItemClick = async (id: string | number) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+    try {
+      await markNotificationAsRead(String(id));
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
   };
 
   const handleViewAll = () => {
@@ -155,15 +225,23 @@ export default function Navbar({
           </div>
 
           {/* Notification Toggle */}
-          <div className="relative">
+          <div className="relative flex items-center">
             <button
-              onClick={() => setNotificationsOpen(!notificationsOpen)}
-              className="text-slate-600 hover:text-[#005c55] p-2 rounded-full hover:bg-slate-50 transition-colors relative cursor-pointer"
+              onClick={handleBellClick}
+              className="text-slate-600 hover:text-[#005c55] p-2 rounded-full hover:bg-slate-50 transition-colors relative cursor-pointer flex items-center justify-center min-w-9 min-h-9"
               aria-label="Notifications"
             >
-              <Bell className="w-5 h-5" />
-              {!user && (
-                <span className="absolute top-1.5 right-1.5 bg-orange-500 w-2 h-2 rounded-full ring-2 ring-white" />
+              {notificationsLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-[#005c55]" />
+              ) : (
+                <>
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white">
+                      {unreadCount}
+                    </span>
+                  )}
+                </>
               )}
             </button>
 
@@ -172,59 +250,28 @@ export default function Navbar({
                 notifications={notifications}
                 onMarkAllRead={handleMarkAllRead}
                 onViewAll={handleViewAll}
+                onItemClick={handleNotificationItemClick}
                 onClose={() => setNotificationsOpen(false)}
               />
             )}
           </div>
 
-          {/* Active Testing Profile Switcher */}
-          <div className="relative">
-            <button
-              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center space-x-2 border border-teal-100 hover:border-brand-teal bg-teal-50/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-gray-700 select-none cursor-pointer"
-            >
-              <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
-              <span>{activeProfile.name}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400 stroke-[2.5px]" />
-            </button>
 
-            {profileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-150 rounded-2xl shadow-xl z-50 p-2 animate-fade-in animate-duration-150">
-                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-3.5 py-1.5 border-b border-gray-100 mb-1">
-                  Select User Context
-                </div>
-                {profiles.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => handleProfileChange(p)}
-                    className={`w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between ${
-                      activeProfile.id === p.id ? "bg-teal-50/70 text-brand-teal font-bold" : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span>{p.name}</span>
-                    {activeProfile.id === p.id && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* Auth profile avatar (if logged in) or buttons */}
-          {user ? (
+          {displayUser ? (
             <>
               <div className="w-[1px] h-6 bg-slate-200" />
               <div className="flex items-center space-x-3 cursor-pointer">
                 <div className="relative w-9 h-9 rounded-full overflow-hidden border border-slate-200 shadow-sm shrink-0">
                   <img
-                    src={user.avatar}
-                    alt={user.name}
+                    src={displayUser.avatar}
+                    alt={displayUser.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <span className="text-sm font-bold text-slate-800 hover:text-[#005c55] transition-colors">
-                  {user.name}
+                  {displayUser.name}
                 </span>
               </div>
             </>

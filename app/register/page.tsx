@@ -2,41 +2,37 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Check,
   X,
   Mail,
   Lock,
   User,
-  MapPin,
-  Building,
-  ShieldCheck,
-  ArrowRight,
-  Info,
-  ChevronRight,
-  Sparkles
+  Smartphone,
+  ArrowRight
 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import Input from "@/components/Input";
-import Select from "@/components/Select";
 import Button from "@/components/Button";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function RegisterPage() {
-  const [role, setRole] = useState<"citizen" | "official">("citizen");
+  const { register } = useAuth();
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    ward: "",
-    department: "",
-    employeeId: "",
+    phone: "",
     password: "",
     confirmPassword: "",
     agreeTerms: false
   });
 
   const [passwordStrength, setPasswordStrength] = useState(0);
-  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const requirements = [
     { label: "At least 8 characters", val: formData.password.length >= 8 },
@@ -54,53 +50,36 @@ export default function RegisterPage() {
     setPasswordStrength(score);
   }, [formData.password]);
 
-  const wards = [
-    { value: 1, label: "Ward 1 - South Pahartali" },
-    { value: 2, label: "Ward 2 - Jalalabad" },
-    { value: 3, label: "Ward 3 - Panchlaish" },
-    { value: 4, label: "Ward 4 - Chandgaon" },
-    { value: 7, label: "Ward 7 - West Shulukbahar" },
-    { value: 8, label: "Ward 8 - Shulukbahar" },
-    { value: 15, label: "Ward 15 - Chawkbazar" },
-    { value: 16, label: "Ward 16 - Sulakbahar" },
-    { value: 20, label: "Ward 20 - Dewan Bazar" },
-    { value: 21, label: "Ward 21 - Jamal Khan" },
-    { value: 22, label: "Ward 22 - Enayet Bazar" },
-    { value: 24, label: "Ward 24 - North Agrabad" },
-    { value: 27, label: "Ward 27 - South Agrabad" },
-    { value: 31, label: "Ward 31 - Alkaran" },
-    { value: 32, label: "Ward 32 - Pathantooly" },
-    { value: 41, label: "Ward 41 - South Patenga" }
-  ];
-
-  const departments = [
-    { value: "Waste Management", label: "Waste Management" },
-    { value: "Engineering / Roads", label: "Engineering & Roads" },
-    { value: "Water & Sewerage", label: "Water & Sewerage" },
-    { value: "Public Health", label: "Public Health" }
-  ];
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    if (type === "checkbox") {
-      const target = e.target as HTMLInputElement;
-      setFormData((prev) => ({ ...prev, [name]: target.checked }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value
+    }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordStrength < 3) return;
     if (formData.password !== formData.confirmPassword) return;
     if (!formData.agreeTerms) return;
 
     setLoading(true);
-    setTimeout(() => {
+    setError(null);
+    try {
+      await register({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        role: "citizen"
+      });
+      router.push("/verify?email=" + encodeURIComponent(formData.email));
+    } catch (err: any) {
+      setError(err.message || "Registration failed. Please try again.");
+    } finally {
       setLoading(false);
-      setSubmitted(true);
-    }, 2000);
+    }
   };
 
   // Right column visual sidebar bullet items
@@ -136,48 +115,6 @@ export default function RegisterPage() {
     </div>
   );
 
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
-        <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl border border-gray-100 text-center space-y-6 animate-fade-in">
-          <div className="w-20 h-20 bg-brand-cyan-bg rounded-full flex items-center justify-center text-brand-cyan-text mx-auto shadow-md">
-            <ShieldCheck className="w-10 h-10" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-gray-900">Registration Successful!</h2>
-            <p className="text-gray-500 text-sm">
-              Your MuniFix Ctg account has been successfully created. Welcome aboard, citizen!
-            </p>
-          </div>
-          
-          <div className="bg-slate-50 rounded-2xl p-4 text-left border border-slate-100 space-y-3">
-            <div className="flex items-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 mr-1.5 text-brand-orange" /> Account details
-            </div>
-            <div className="text-sm space-y-1 text-gray-600">
-              <p><span className="font-semibold text-gray-700">Name:</span> {formData.name}</p>
-              <p><span className="font-semibold text-gray-700">Email:</span> {formData.email}</p>
-              {role === "citizen" ? (
-                <p><span className="font-semibold text-gray-700">Ward Assigned:</span> Ward {formData.ward}</p>
-              ) : (
-                <p><span className="font-semibold text-gray-700">Department:</span> {formData.department}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <Link href="/" className="w-full block">
-              <Button variant="primary" className="w-full py-3.5">
-                Go to Home Screen
-                <ChevronRight className="w-4 h-4 ml-1.5" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <AuthLayout
       sidebarTitle="Transform Chattogram One Report at a Time"
@@ -197,29 +134,12 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Role switcher */}
-        <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-xl mb-6">
-          <button
-            onClick={() => setRole("citizen")}
-            className={`py-2 text-center text-sm font-semibold rounded-lg transition-all duration-200 ${
-              role === "citizen"
-                ? "bg-white text-brand-teal shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Citizen Sign Up
-          </button>
-          <button
-            onClick={() => setRole("official")}
-            className={`py-2 text-center text-sm font-semibold rounded-lg transition-all duration-200 ${
-              role === "official"
-                ? "bg-white text-brand-teal shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Official Sign Up
-          </button>
-        </div>
+        {/* Inline Error Message */}
+        {error && (
+          <div className="p-3 bg-red-50 text-red-650 rounded-xl text-xs font-semibold text-center border border-red-100 mb-5 animate-fade-in">
+            {error}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -233,51 +153,29 @@ export default function RegisterPage() {
             icon={<User className="w-4 h-4" />}
           />
 
-          <Input
-            label="Email Address"
-            name="email"
-            type="email"
-            required
-            placeholder="name@example.com"
-            value={formData.email}
-            onChange={handleInputChange}
-            icon={<Mail className="w-4 h-4" />}
-          />
-
-          {/* Conditional dropdown based on user role selection */}
-          {role === "citizen" ? (
-            <Select
-              label="Ward Number (Chattogram)"
-              name="ward"
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Email Address"
+              name="email"
+              type="email"
               required
-              value={formData.ward}
+              placeholder="name@example.com"
+              value={formData.email}
               onChange={handleInputChange}
-              placeholder="Select your ward"
-              options={wards}
-              icon={<MapPin className="w-4 h-4" />}
+              icon={<Mail className="w-4 h-4" />}
             />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Select
-                label="Department"
-                name="department"
-                required
-                value={formData.department}
-                onChange={handleInputChange}
-                placeholder="Select dept"
-                options={departments}
-                icon={<Building className="w-4 h-4" />}
-              />
-              <Input
-                label="Employee ID"
-                name="employeeId"
-                required
-                placeholder="e.g. CCC-9876"
-                value={formData.employeeId}
-                onChange={handleInputChange}
-              />
-            </div>
-          )}
+
+            <Input
+              label="Mobile Number"
+              name="phone"
+              type="tel"
+              required
+              placeholder="01XXXXXXXXX"
+              value={formData.phone}
+              onChange={handleInputChange}
+              icon={<Smartphone className="w-4 h-4" />}
+            />
+          </div>
 
           <div className="space-y-1.5">
             <Input
@@ -390,7 +288,7 @@ export default function RegisterPage() {
               disabled={
                 !formData.name ||
                 !formData.email ||
-                (role === "citizen" ? !formData.ward : (!formData.department || !formData.employeeId)) ||
+                !formData.phone ||
                 passwordStrength < 3 ||
                 formData.password !== formData.confirmPassword ||
                 !formData.agreeTerms

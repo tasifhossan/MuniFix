@@ -1,7 +1,9 @@
 "use client";
+// NOTE: This page is integrated with backend support.
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Mail,
   Check,
@@ -14,12 +16,15 @@ import ResendTimer from "@/components/ResendTimer";
 import AuthHeader from "@/components/AuthHeader";
 import AuthFooter from "@/components/AuthFooter";
 import AuthBackground from "@/components/AuthBackground";
+import { verifyOtp, forgotPassword } from "@/lib/auth";
 
 export default function VerifyPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("j.doe@example.com");
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Safe client-side read of email param
   useEffect(() => {
@@ -32,21 +37,30 @@ export default function VerifyPage() {
     }
   }, []);
 
-  const handleResend = () => {
-    // API request would go here
-    console.log("Resend code clicked");
+  const handleResend = async () => {
+    try {
+      setError(null);
+      await forgotPassword(email);
+    } catch (err: any) {
+      setError(err.message || "Failed to resend verification code.");
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = otp.join("");
     if (code.length !== 6) return;
 
     setLoading(true);
-    setTimeout(() => {
+    setError(null);
+    try {
+      await verifyOtp(email, code);
+      router.push("/login?success=" + encodeURIComponent("Account verified successfully. Please sign in."));
+    } catch (err: any) {
+      setError(err.message || "Verification failed. Please check the code.");
+    } finally {
       setLoading(false);
-      setSubmitted(true);
-    }, 1500);
+    }
   };
 
   const isOtpComplete = otp.every((digit) => digit !== "");
@@ -81,9 +95,9 @@ export default function VerifyPage() {
             </div>
 
             <div className="pt-2">
-              <Link href="/" className="w-full block">
+              <Link href="/login" className="w-full block">
                 <Button variant="primary" className="w-full py-3.5 flex items-center justify-center gap-2">
-                  Go to Homepage
+                  Go to Login Page
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </Link>
@@ -119,6 +133,13 @@ export default function VerifyPage() {
               Enter the 6-digit verification code sent to <span className="text-gray-800 break-all">{email}</span>
             </p>
           </div>
+
+          {/* Inline Error Message */}
+          {error && (
+            <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-semibold text-center border border-red-100 mb-5 animate-fade-in">
+              {error}
+            </div>
+          )}
 
           {/* OTP Code Form */}
           <form onSubmit={handleSubmit} className="space-y-6">

@@ -14,6 +14,7 @@ interface ComplaintFiltersProps {
   setDateRange: (val: string) => void;
   onApply?: () => void;
   onExport?: () => void;
+  hideDepartment?: boolean;
 }
 
 export default function ComplaintFilters({
@@ -27,38 +28,41 @@ export default function ComplaintFilters({
   setDateRange,
   onApply,
   onExport,
+  hideDepartment = false,
 }: ComplaintFiltersProps) {
   return (
     <div className="w-full bg-white rounded-3xl border border-slate-200 p-6 shadow-sm font-sans space-y-6">
       
       {/* 4-column dropdown grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${hideDepartment ? "lg:grid-cols-3" : "lg:grid-cols-4"} gap-5`}>
         
         {/* Department Filter */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider select-none">
-            <Building className="w-3.5 h-3.5 text-slate-400" />
-            <span>Department</span>
-          </label>
-          <div className="relative">
-            <select
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-4 pr-10 text-sm font-semibold text-slate-700 focus:outline-none focus:border-[#005c55] focus:ring-1 focus:ring-[#005c55] appearance-none cursor-pointer transition-all shadow-sm"
-            >
-              <option value="All">All Departments</option>
-              <option value="Water Supply">Water Supply</option>
-              <option value="Waste Mgmt">Waste Mgmt</option>
-              <option value="Infrastructure">Infrastructure</option>
-              <option value="Public Safety">Public Safety</option>
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
+        {!hideDepartment && (
+          <div className="space-y-2">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider select-none">
+              <Building className="w-3.5 h-3.5 text-slate-400" />
+              <span>Department</span>
+            </label>
+            <div className="relative">
+              <select
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-4 pr-10 text-sm font-semibold text-slate-700 focus:outline-none focus:border-[#005c55] focus:ring-1 focus:ring-[#005c55] appearance-none cursor-pointer transition-all shadow-sm"
+              >
+                <option value="All">All Departments</option>
+                <option value="Water Supply">Water Supply</option>
+                <option value="Waste Mgmt">Waste Mgmt</option>
+                <option value="Infrastructure">Infrastructure</option>
+                <option value="Public Safety">Public Safety</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Status Filter */}
         <div className="space-y-2">

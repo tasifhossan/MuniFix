@@ -1,7 +1,5 @@
-"use client";
-
 import React from "react";
-import { Check } from "lucide-react";
+import { Check, AlertTriangle } from "lucide-react";
 
 interface SuccessModalProps {
   isOpen: boolean;
@@ -14,6 +12,10 @@ interface SuccessModalProps {
   secondaryButtonText?: string;
   onPrimaryAction?: () => void;
   onSecondaryAction?: () => void;
+  // Optional AI integration props
+  aiCategory?: string | null;
+  aiPriority?: string | null;
+  aiConfidence?: number | null; // 0-100
 }
 
 export default function SuccessModal({
@@ -27,14 +29,17 @@ export default function SuccessModal({
   secondaryButtonText = "Submit Another",
   onPrimaryAction,
   onSecondaryAction,
+  aiCategory,
+  aiPriority,
+  aiConfidence,
 }: SuccessModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop overlay with blur */}
       <div 
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs animate-fade-in"
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
 
@@ -58,21 +63,99 @@ export default function SuccessModal({
           </p>
         </div>
 
+        {/* Premium AI preview panel */}
+        {aiCategory !== undefined && (
+          <div className="w-full bg-[#f0faf8] border border-[#a2e3dc]/40 rounded-2xl p-4.5 text-left space-y-3.5 select-none relative overflow-hidden">
+            {/* Soft decorative background glow */}
+            <div className="absolute right-0 top-0 w-24 h-24 bg-[#0f766e]/5 rounded-full blur-xl pointer-events-none" />
+            
+            {/* Header label and optional needs review badge */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black text-[#0f766e] uppercase tracking-widest flex items-center gap-1">
+                <span>⚡</span> AI Routing Engine
+              </span>
+              
+              {/* Needs manual review warning badge if confidence is low (< 70) */}
+              {(aiConfidence === null || aiConfidence === undefined || aiConfidence < 70) && (
+                <span className="inline-flex items-center gap-1 bg-red-50 text-red-650 px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase border border-red-100/60 leading-none">
+                  Needs manual review
+                </span>
+              )}
+            </div>
+
+            {/* If AI information is null/missing (Gemini failed backend-side and returned nulls) */}
+            {(!aiCategory || !aiPriority) ? (
+              <p className="text-slate-500 font-semibold text-xs leading-relaxed">
+                AI categorization unavailable — a team member will categorize this manually
+              </p>
+            ) : (
+              <div className="space-y-3.5">
+                {/* Category & Priority detail row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">
+                      Predicted Category
+                    </span>
+                    <span className="text-gray-850 font-black text-xs block leading-tight">
+                      {aiCategory}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">
+                      Priority Level
+                    </span>
+                    <span className={`text-xs font-black uppercase tracking-wider block ${
+                      aiPriority.toLowerCase() === "critical" || aiPriority.toLowerCase() === "high" 
+                        ? "text-red-600" 
+                        : aiPriority.toLowerCase() === "low" 
+                          ? "text-slate-500" 
+                          : "text-amber-600"
+                    }`}>
+                      {aiPriority}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress bar and confidence score */}
+                {aiConfidence !== null && aiConfidence !== undefined && (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-wider text-gray-450">
+                      <span>Confidence Score</span>
+                      <span className={aiConfidence < 70 ? "text-amber-600" : "text-[#0f766e]"}>
+                        {aiConfidence.toFixed(1)}%
+                      </span>
+                    </div>
+                    {/* Normalized Progress bar wrapper */}
+                    <div className="w-full h-1.5 bg-slate-100 border border-slate-200/40 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          aiConfidence < 70 ? "bg-amber-500" : "bg-[#0f766e]"
+                        }`}
+                        style={{ width: `${Math.min(Math.max(aiConfidence, 0), 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Report Metadata box */}
-        <div className="w-full bg-[#f8fafc] border border-slate-150 rounded-2xl p-4 sm:p-5 flex justify-between items-center text-left">
-          <div>
+        <div className="w-full bg-[#f8fafc] border border-slate-150 rounded-2xl p-4 sm:p-5 flex justify-between items-center text-left gap-4">
+          <div className="min-w-0 flex-1">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">
               Report ID
             </span>
-            <span className="text-gray-800 font-extrabold text-sm sm:text-base tracking-tight">
+            <span className="text-gray-800 font-extrabold text-xs sm:text-sm tracking-tight block break-all font-mono">
               {reportId}
             </span>
           </div>
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">
               Expected Response
             </span>
-            <span className="text-brand-teal font-extrabold text-sm sm:text-base tracking-tight">
+            <span className="text-brand-teal font-extrabold text-xs sm:text-sm tracking-tight block">
               {expectedResponse}
             </span>
           </div>

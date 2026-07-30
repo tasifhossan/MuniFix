@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   LayoutGrid, 
   AlertTriangle, 
@@ -58,13 +59,43 @@ export default function AdminSidebar({
     pathname?.includes("/admin/settings") ? "settings" : "dashboard"
   );
 
+  const { logout } = useAuth();
+  const [currentUser, setCurrentUser] = React.useState<any>(null);
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        try {
+          setCurrentUser(JSON.parse(stored));
+        } catch (e) {}
+      }
+    }
+  }, []);
+
+  if (!isMounted) return null;
+
+  if (!currentUser || (currentUser.role !== "dept_admin" && currentUser.role !== "super_admin")) {
+    return null;
+  }
+
+  const isSuperAdmin = currentUser.role === "super_admin";
+  const dashboardHref = "/admin";
+
   const baseItems = [
-    { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className="w-5 h-5" />, href: "/admin" },
+    { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className="w-5 h-5" />, href: dashboardHref },
     { id: "permissions", label: "Permissions", icon: <ShieldCheck className="w-5 h-5" />, href: "/admin/permissions" },
     { id: "complaints", label: "Complaints", icon: <AlertTriangle className="w-5 h-5" />, href: "/admin/complaints" },
     { id: "departments", label: "Departments", icon: <Building className="w-5 h-5" />, href: "/admin/departments" },
     { id: "reports", label: "Reports", icon: <BarChart3 className="w-5 h-5" />, href: "/admin/reports" },
   ].filter(item => {
+    // If super admin, ensure they can always see permissions, departments, and reports
+    if (isSuperAdmin && (item.id === "permissions" || item.id === "departments" || item.id === "reports")) {
+      return true;
+    }
+
     if (hideDashboard && item.id === "dashboard") return false;
     if (hidePermissions && item.id === "permissions") return false;
     if (hideComplaints && item.id === "complaints") return false;
@@ -74,6 +105,12 @@ export default function AdminSidebar({
     if (hideUsersAndDepartments && (item.id === "permissions" || item.id === "departments")) {
       return false;
     }
+
+    // Automatically hide superadmin-only views from dept_admin (except departments which is view-only for dept_admin)
+    if (!isSuperAdmin && (item.id === "permissions" || item.id === "reports")) {
+      return false;
+    }
+
     return true;
   });
 
@@ -87,8 +124,6 @@ export default function AdminSidebar({
       onNavClick(id);
     }
   };
-
-  const isSuperAdmin = role === "superadmin";
 
   const renderNewReportButton = () => (
     <Link href="/complaints/new">
@@ -200,12 +235,13 @@ export default function AdminSidebar({
           </button>
         </Link>
         
-        <Link href="/login" className="block">
-          <button className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:text-red-600 hover:bg-red-55/40 transition-all rounded-xl select-none cursor-pointer">
-            <LogOut className="w-5 h-5 text-slate-500" />
-            <span>Logout</span>
-          </button>
-        </Link>
+        <button 
+          onClick={logout}
+          className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:text-red-600 hover:bg-red-55/40 transition-all rounded-xl select-none cursor-pointer"
+        >
+          <LogOut className="w-5 h-5 text-slate-500" />
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   );

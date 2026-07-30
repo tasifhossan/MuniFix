@@ -1,10 +1,12 @@
 "use client";
+// NOTE: This page is integrated with backend support.
 
 import React, { useState } from "react";
 import Link from "next/link";
 import { Mail, Building, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
+import { forgotPassword } from "@/lib/auth";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -12,7 +14,7 @@ export default function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
@@ -25,11 +27,14 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
 
-    // Simulate API request
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await forgotPassword(email);
       setSubmitted(true);
-    }, 1800);
+    } catch (err: any) {
+      setError(err.message || "Failed to send reset link. Please verify your email.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -131,7 +136,7 @@ export default function ForgotPasswordPage() {
 
       {/* Bottom Footer */}
       <footer className="max-w-7xl mx-auto w-full text-center space-y-2 py-4">
-        <p className="text-xs text-gray-400 font-medium">© 2024 MuniFix Ctg. All rights reserved.</p>
+        <p className="text-xs text-gray-400 font-medium">© {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</p>
         <div className="flex items-center justify-center space-x-6 text-[11px] text-gray-500 font-bold">
           <Link href="/privacy" className="hover:text-brand-teal transition-colors">Privacy Policy</Link>
           <span className="w-1.5 h-1.5 bg-gray-300 rounded-full" />

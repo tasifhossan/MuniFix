@@ -29,6 +29,7 @@ export interface DepartmentItem {
 
 interface DepartmentTableProps {
   items: DepartmentItem[];
+  totalCount?: number;
   onEdit?: (item: DepartmentItem) => void;
   onDelete?: (item: DepartmentItem) => void;
   onFilterClick?: () => void;
@@ -37,6 +38,7 @@ interface DepartmentTableProps {
 
 export default function DepartmentTable({
   items,
+  totalCount = items.length,
   onEdit,
   onDelete,
   onFilterClick,
@@ -125,9 +127,11 @@ export default function DepartmentTable({
               <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 Active Complaints
               </th>
-              <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-                Actions
-              </th>
+              {(onEdit || onDelete) && (
+                <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
 
@@ -184,24 +188,30 @@ export default function DepartmentTable({
                 </td>
 
                 {/* Actions */}
-                <td className="py-4 px-6 text-right vertical-middle">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => onEdit && onEdit(item)}
-                      className="p-1.5 text-slate-400 hover:text-[#005c55] hover:bg-slate-50 rounded-lg transition-all cursor-pointer inline-flex active:scale-90"
-                      title="Edit"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => onDelete && onDelete(item)}
-                      className="p-1.5 text-slate-400 hover:text-red-650 hover:bg-red-50 rounded-lg transition-all cursor-pointer inline-flex active:scale-90"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+                {(onEdit || onDelete) && (
+                  <td className="py-4 px-6 text-right vertical-middle">
+                    <div className="flex items-center justify-end gap-2">
+                      {onEdit && (
+                        <button
+                          onClick={() => onEdit(item)}
+                          className="p-1.5 text-slate-400 hover:text-[#005c55] hover:bg-slate-50 rounded-lg transition-all cursor-pointer inline-flex active:scale-90"
+                          title="Edit"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          onClick={() => onDelete(item)}
+                          className="p-1.5 text-slate-400 hover:text-red-650 hover:bg-red-50 rounded-lg transition-all cursor-pointer inline-flex active:scale-90"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -211,7 +221,7 @@ export default function DepartmentTable({
       {/* Table Pagination Footer */}
       <div className="bg-[#f8fafc] border-t border-slate-200/60 px-6 py-4 flex items-center justify-between select-none">
         <span className="text-xs font-bold text-slate-400">
-          Showing 1-{items.length} of 12 departments
+          Showing 1-{items.length} of {totalCount} departments
         </span>
 
         {/* Previous and Next buttons */}

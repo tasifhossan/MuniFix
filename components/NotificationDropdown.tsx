@@ -16,6 +16,7 @@ interface NotificationDropdownProps {
   onMarkAllRead: () => void;
   onViewAll: () => void;
   onClose: () => void;
+  onItemClick?: (id: string | number) => void;
 }
 
 export default function NotificationDropdown({
@@ -23,6 +24,7 @@ export default function NotificationDropdown({
   onMarkAllRead,
   onViewAll,
   onClose,
+  onItemClick,
 }: NotificationDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -90,13 +92,14 @@ export default function NotificationDropdown({
       <div className="max-h-[300px] overflow-y-auto space-y-4 py-4 pr-1 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
         {notifications.length === 0 ? (
           <div className="text-center py-6 text-slate-450 font-bold text-xs">
-            No new notifications
+            No notifications yet
           </div>
         ) : (
           notifications.map((notif) => (
             <div 
               key={notif.id}
-              className={`flex items-start gap-3.5 p-2 rounded-2xl transition-colors duration-200 hover:bg-slate-50/50 ${
+              onClick={() => onItemClick && onItemClick(notif.id)}
+              className={`flex items-start gap-3.5 p-2 rounded-2xl transition-colors duration-200 hover:bg-slate-50/50 cursor-pointer ${
                 !notif.read ? "bg-slate-50/20" : ""
               }`}
             >

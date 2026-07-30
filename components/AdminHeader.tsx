@@ -166,10 +166,10 @@ export default function AdminHeader({
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <span className="text-sm font-extrabold text-slate-805 block leading-tight select-none">
-                Admin User
+                {userRole || "Admin User"}
               </span>
               <span className="text-[10px] font-bold text-slate-400 block leading-tight select-none mt-0.5">
-                {userRole}
+                {userSubtitle || "Administrator"}
               </span>
             </div>
             <div className="relative w-10 h-10 rounded-full overflow-hidden border border-slate-200 shrink-0 shadow-sm">
@@ -219,10 +219,10 @@ export default function AdminHeader({
         <div className="flex items-center gap-3">
           <div className="text-right">
             <span className="text-sm font-extrabold text-slate-805 block leading-tight select-none">
-              Admin User
+              {userRole || "Admin User"}
             </span>
             <span className="text-[10px] font-bold text-slate-400 block leading-tight select-none mt-0.5">
-              Chief Supervisor
+              {userSubtitle || "Chief Supervisor"}
             </span>
           </div>
           <div className="relative w-10 h-10 rounded-full overflow-hidden border border-slate-200 shrink-0 shadow-sm">
