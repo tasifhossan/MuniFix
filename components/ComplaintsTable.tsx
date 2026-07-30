@@ -1,12 +1,13 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Trash2 } from "lucide-react";
 
 export interface ComplaintItem {
   id: string; // e.g. "FIX-8842"
   category: string; // e.g. "Water Leakage"
   department: string; // e.g. "Water Supply"
+  departmentId?: number;
   departmentDotColor: string; // e.g. "bg-sky-500"
   priority: "Critical" | "High" | "Medium" | "Low";
   status: "Pending" | "In Progress" | "Assigned" | "Resolved" | "Under Review";
@@ -20,6 +21,9 @@ interface ComplaintsTableProps {
   totalCount?: number;
   currentPage?: number;
   onPageChange?: (page: number) => void;
+  onAssignClick?: (item: ComplaintItem) => void;
+  onStatusChange?: (id: string, newStatus: string) => void;
+  onDeleteClick?: (id: string) => void;
 }
 
 export default function ComplaintsTable({
@@ -27,6 +31,9 @@ export default function ComplaintsTable({
   totalCount = 1248,
   currentPage = 1,
   onPageChange,
+  onAssignClick,
+  onStatusChange,
+  onDeleteClick,
 }: ComplaintsTableProps) {
   
   // Custom Priority Badge with dot
@@ -99,6 +106,9 @@ export default function ComplaintsTable({
               <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 Date Reported
               </th>
+              <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
+                Actions
+              </th>
             </tr>
           </thead>
 
@@ -165,6 +175,37 @@ export default function ComplaintsTable({
                 {/* Date Reported */}
                 <td className="py-4.5 px-6 text-xs font-bold text-slate-500 vertical-middle">
                   {item.dateReported}
+                </td>
+
+                {/* Actions */}
+                <td className="py-4.5 px-6 text-right vertical-middle">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => onAssignClick?.(item)}
+                      className="p-1.5 text-slate-400 hover:text-[#005c55] hover:bg-slate-50 rounded-lg transition-all cursor-pointer inline-flex active:scale-90"
+                      title="Assign Field Worker"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                    </button>
+                    <select
+                      value={item.status}
+                      onChange={(e) => onStatusChange?.(item.id, e.target.value)}
+                      className="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-700 font-bold"
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Assigned">Assigned</option>
+                      <option value="Resolved">Resolved</option>
+                      <option value="Under Review">Under Review</option>
+                    </select>
+                    <button
+                      onClick={() => onDeleteClick?.(item.id)}
+                      className="p-1.5 text-slate-400 hover:text-red-655 hover:bg-red-50 rounded-lg transition-all cursor-pointer inline-flex active:scale-90"
+                      title="Delete Complaint"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

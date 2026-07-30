@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Info } from "lucide-react";
+import { fetchUsers } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AssignWorkerModalProps {
   isOpen: boolean;
@@ -10,7 +12,8 @@ interface AssignWorkerModalProps {
   priority: "Critical" | "High" | "Medium" | "Low";
   category: string;
   location: string;
-  onConfirm: (worker: string) => void;
+  departmentId?: number;
+  onConfirm: (workerId: string) => Promise<void> | void;
 }
 
 export default function AssignWorkerModal({
@@ -20,23 +23,46 @@ export default function AssignWorkerModal({
   priority,
   category,
   location,
+  departmentId,
   onConfirm,
 }: AssignWorkerModalProps) {
+  const { user } = useAuth();
+  const isDeptAdmin = user?.role === "dept_admin";
+
   const [selectedWorker, setSelectedWorker] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [workers, setWorkers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      async function getWorkers() {
+        try {
+          const effectiveDeptId = isDeptAdmin ? user?.department_id : departmentId;
+          const res = await fetchUsers({ role: "field_worker", department_id: effectiveDeptId });
+          setWorkers(res.users ?? res ?? []);
+        } catch (err) {
+          console.error("Failed to fetch workers for assignment modal", err);
+        }
+      }
+      getWorkers();
+    }
+  }, [isOpen, departmentId, isDeptAdmin, user?.department_id]);
 
   if (!isOpen) return null;
 
-  const handleConfirmSubmit = (e: React.FormEvent) => {
+  const handleConfirmSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedWorker) return;
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      onConfirm(selectedWorker);
+    try {
+      await onConfirm(selectedWorker);
       setSelectedWorker("");
       onClose();
-    }, 1200);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Styles for Priority badges inside details box
@@ -129,9 +155,11 @@ export default function AssignWorkerModal({
                   className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-brand-teal text-gray-800 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M7%209l3%203%203-3%22%20stroke%3D%22%25236b7280%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_0.75rem_center] bg-no-repeat cursor-pointer transition-all duration-200"
                 >
                   <option value="">Select an available worker...</option>
-                  <option value="Abul Hossain (Zone 04)">Abul Hossain (Zone 04) - Online</option>
-                  <option value="Ahmed Khan (Zone 15)">Ahmed Khan (Zone 15) - Online</option>
-                  <option value="Karim Ali (Zone 08)">Karim Ali (Zone 08) - Busy</option>
+                  {workers.map((worker) => (
+                    <option key={worker.id} value={worker.id}>
+                      {worker.name} ({worker.phone || "No Phone"})
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

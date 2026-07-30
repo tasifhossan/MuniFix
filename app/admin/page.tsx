@@ -23,10 +23,10 @@ import StatusDistribution from "@/components/StatusDistribution";
 import CriticalActivityLog from "@/components/CriticalActivityLog";
 import IncidentHotspots from "@/components/IncidentHotspots";
 import {
-  fetchComplaints,
-  fetchAdminDepartments,
-  fetchAdminWorkers,
   fetchMyProfile,
+  fetchAdminComplaints,
+  fetchDepartments,
+  fetchUsers,
 } from "@/lib/api";
 
 export default function AdminDashboardPage() {
@@ -47,23 +47,22 @@ export default function AdminDashboardPage() {
       setLoading(true);
       setError(null);
 
-      const [profileData, complaintData, deptData] = await Promise.all([
-        fetchMyProfile(),
-        fetchComplaints(),
-        fetchAdminDepartments(),
+      const profileData = await fetchMyProfile();
+      const p = profileData.profile ?? profileData.user ?? profileData;
+      setProfile(p);
+
+      const isDeptAdmin = p.role === "dept_admin";
+      const departmentId = p.department_id;
+
+      const [complaintData, deptData, workerData] = await Promise.all([
+        fetchAdminComplaints(isDeptAdmin && departmentId ? { department_id: departmentId } : {}),
+        fetchDepartments(),
+        fetchUsers(isDeptAdmin && departmentId ? { role: "field_worker", department_id: departmentId } : { role: "field_worker" }),
       ]);
 
-      setProfile(profileData.user ?? profileData);
       setComplaints(complaintData.complaints ?? complaintData.complains ?? []);
       setDepartments(deptData.departments ?? deptData ?? []);
-
-      // Workers only available for dept_admin / super_admin — try but don't crash
-      try {
-        const workerData = await fetchAdminWorkers();
-        setWorkers(workerData.workers ?? workerData ?? []);
-      } catch {
-        setWorkers([]);
-      }
+      setWorkers(workerData.users ?? workerData ?? []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -159,21 +158,23 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Live Analytical Stats Card Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              <AnalyticsStatsCard
-                icon={<Building className="w-5 h-5 text-emerald-600" />}
-                iconBgClass="bg-emerald-50 border border-emerald-100/50"
-                badgeText="Active"
-                badgeClass="bg-emerald-100 text-emerald-700 font-extrabold"
-                title="Total Departments"
-                value={String(departments.length)}
-                footerElement={
-                  <>
-                    <span className="text-emerald-500">&bull;</span>
-                    <span>{departments.length} registered</span>
-                  </>
-                }
-              />
+            <div className={`grid grid-cols-1 sm:grid-cols-2 ${profile?.role === "super_admin" ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-5`}>
+              {profile?.role === "super_admin" && (
+                <AnalyticsStatsCard
+                  icon={<Building className="w-5 h-5 text-emerald-600" />}
+                  iconBgClass="bg-emerald-50 border border-emerald-100/50"
+                  badgeText="Active"
+                  badgeClass="bg-emerald-100 text-emerald-700 font-extrabold"
+                  title="Total Departments"
+                  value={String(departments.length)}
+                  footerElement={
+                    <>
+                      <span className="text-emerald-500">&bull;</span>
+                      <span>{departments.length} registered</span>
+                    </>
+                  }
+                />
+              )}
               <AnalyticsStatsCard
                 icon={<FileText className="w-5 h-5 text-amber-600" />}
                 iconBgClass="bg-amber-50 border border-amber-100/50"
@@ -216,7 +217,7 @@ export default function AdminDashboardPage() {
                 footerElement={
                   <>
                     <Users className="w-3 h-3 text-slate-400" />
-                    <span>Across all sectors</span>
+                    <span>{profile?.role === "super_admin" ? "Across all sectors" : "In your department"}</span>
                   </>
                 }
               />
@@ -231,14 +232,16 @@ export default function AdminDashboardPage() {
             )}
 
             {/* Bottom Section: Critical Activity & Incident Hotspots */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-              <div className="lg:col-span-3 flex">
-                <CriticalActivityLog />
+            {profile?.role === "super_admin" && (
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <div className="lg:col-span-3 flex">
+                  <CriticalActivityLog />
+                </div>
+                <div className="lg:col-span-2 flex">
+                  <IncidentHotspots />
+                </div>
               </div>
-              <div className="lg:col-span-2 flex">
-                <IncidentHotspots />
-              </div>
-            </div>
+            )}
           </main>
 
           {/* Global Footer */}

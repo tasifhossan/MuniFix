@@ -149,21 +149,17 @@ export async function updateComplaint(
 
 export async function updateComplaintStatus(
   id: string, 
-  payload: { status: string; notes?: string; worker_id?: string; department_id?: number }
+  payload: { status: string; notes?: string; worker_id?: string; department_id?: number } | FormData
 ) {
-  const profile = getActiveProfile();
-  const body = {
-    ...payload,
-    changed_by: profile.id
-  };
+  const isFormData = payload instanceof FormData;
+  const headers = getHeaders();
 
   const res = await fetch(`${API_BASE_URL}/complain/${id}/status`, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...getHeaders()
-    },
-    body: JSON.stringify(body)
+    headers: isFormData 
+      ? { ...headers } 
+      : { "Content-Type": "application/json", ...headers },
+    body: isFormData ? payload : JSON.stringify(payload)
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -255,6 +251,41 @@ export async function fetchMyProfile() {
   return res.json();
 }
 
+export async function updateMyProfile(payload: { name: string; phone?: string }) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/my/profile`, {
+    method: "PUT",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update profile");
+  }
+  return res.json();
+}
+
+export async function changeMyPassword(payload: { currentPassword: string; newPassword: string }) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/my/password`, {
+    method: "PATCH",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to change password");
+  }
+  return res.json();
+}
+
+
 export async function fetchWorkerTasks() {
   const headers = getHeaders();
   const res = await fetch(`${API_BASE_URL}/complain/worker/tasks`, {
@@ -270,7 +301,7 @@ export async function fetchWorkerTasks() {
 
 export async function fetchAdminDepartments() {
   const headers = getHeaders();
-  const res = await fetch(`${API_BASE_URL}/admin/departments`, {
+  const res = await fetch(`${API_BASE_URL}/departments`, {
     method: "GET",
     headers: { ...headers },
   });
@@ -283,7 +314,7 @@ export async function fetchAdminDepartments() {
 
 export async function fetchAdminWorkers() {
   const headers = getHeaders();
-  const res = await fetch(`${API_BASE_URL}/admin/workers`, {
+  const res = await fetch(`${API_BASE_URL}/users?role=field_worker`, {
     method: "GET",
     headers: { ...headers },
   });
@@ -307,6 +338,137 @@ export async function updateUserRole(userId: string, payload: { role: string; de
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to update user role");
+  }
+  return res.json();
+}
+
+export async function updateUserStatus(userId: string, isActive: boolean) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
+    method: "PATCH",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ is_active: isActive }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update user status");
+  }
+  return res.json();
+}
+
+
+export async function fetchAdminComplaints(filters: { status?: string; category?: string; priority?: string; department_id?: number; citizen_id?: string } = {}) {
+  const params = new URLSearchParams();
+  if (filters.status && filters.status !== "All") params.append("status", filters.status.toLowerCase());
+  if (filters.category && filters.category !== "All") params.append("category", filters.category);
+  if (filters.priority && filters.priority !== "All") params.append("priority", filters.priority.toLowerCase());
+  if (filters.department_id) params.append("department_id", String(filters.department_id));
+  if (filters.citizen_id) params.append("citizen_id", filters.citizen_id);
+
+  const res = await fetch(`${API_BASE_URL}/complain/admin/filter?${params.toString()}`, {
+    method: "GET",
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch admin complaints");
+  }
+  return res.json();
+}
+
+export async function fetchDepartments() {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/departments`, {
+    method: "GET",
+    headers: { ...headers },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch departments");
+  }
+  return res.json();
+}
+
+export async function createDepartment(payload: { name: string; description?: string }) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/departments`, {
+    method: "POST",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to create department");
+  }
+  return res.json();
+}
+
+export async function updateDepartment(id: string | number, payload: { name: string; description?: string }) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/departments/${id}`, {
+    method: "PUT",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update department");
+  }
+  return res.json();
+}
+
+export async function deleteDepartment(id: string | number) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/departments/${id}`, {
+    method: "DELETE",
+    headers: { ...headers },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to delete department");
+  }
+  return res.json();
+}
+
+export async function fetchUsers(filters: { role?: string; department_id?: string | number } = {}) {
+  const params = new URLSearchParams();
+  if (filters.role) params.append("role", filters.role);
+  if (filters.department_id) params.append("department_id", String(filters.department_id));
+
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/users?${params.toString()}`, {
+    method: "GET",
+    headers: { ...headers },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch users");
+  }
+  return res.json();
+}
+
+export async function assignComplaint(id: string, payload: { worker_id: string }) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/complain/${id}/assign`, {
+    method: "POST",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to assign complaint");
   }
   return res.json();
 }

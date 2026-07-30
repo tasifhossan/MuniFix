@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
-import { Check, Camera } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Check, Camera, Loader2 } from "lucide-react";
 
 interface WorkerActionCenterProps {
   initialStatus?: "In Progress" | "Assigned" | "Resolved";
-  onUpdate?: (data: { status: string; notes: string }) => void;
+  onUpdate?: (data: { status: string; notes: string; file: File | null }) => Promise<void>;
   lastSyncText?: string;
 }
 
@@ -17,17 +17,34 @@ export default function WorkerActionCenter({
   const [status, setStatus] = useState(initialStatus);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selected = e.target.files[0];
+      setFile(selected);
+      setFilePreview(URL.createObjectURL(selected));
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
       if (onUpdate) {
-        onUpdate({ status, notes });
+        await onUpdate({ status, notes, file });
       }
-      alert(`Task status successfully updated to "${status}"!`);
-    }, 1000);
+    } catch (err: any) {
+      console.error("Action Center update failed:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -80,19 +97,47 @@ export default function WorkerActionCenter({
           <label className="text-xs font-black text-gray-500 uppercase tracking-widest block">
             Proof of Work (Photos)
           </label>
-          <div className="border-2 border-dashed border-slate-200 hover:border-brand-teal/50 rounded-xl p-6 text-center cursor-pointer bg-slate-50/30 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2 group">
-            <div className="w-10 h-10 bg-sky-50 text-sky-600 rounded-full flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform duration-300">
-              <Camera className="w-5 h-5 stroke-[2.2]" />
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+          
+          {filePreview ? (
+            <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm group">
+              <img src={filePreview} alt="Selected proof preview" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFile(null);
+                  setFilePreview(null);
+                }}
+                className="absolute top-2.5 right-2.5 bg-black/60 text-white rounded-full hover:bg-black/80 w-6 h-6 flex items-center justify-center text-xs transition-colors"
+              >
+                ✕
+              </button>
             </div>
-            <div>
-              <span className="text-xs font-bold text-slate-700 block">
-                Upload Photos
-              </span>
-              <span className="text-[10px] font-semibold text-slate-400 block mt-0.5">
-                JPG, PNG up to 10MB
-              </span>
+          ) : (
+            <div 
+              onClick={triggerFileInput}
+              className="border-2 border-dashed border-slate-200 hover:border-brand-teal/50 rounded-xl p-6 text-center cursor-pointer bg-slate-50/30 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2 group"
+            >
+              <div className="w-10 h-10 bg-sky-50 text-sky-600 rounded-full flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform duration-300">
+                <Camera className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-700 block">
+                  Upload Photos
+                </span>
+                <span className="text-[10px] font-semibold text-slate-400 block mt-0.5">
+                  JPG, PNG up to 10MB
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Submit update triggers */}
@@ -102,7 +147,11 @@ export default function WorkerActionCenter({
             disabled={isSubmitting}
             className="w-full bg-brand-teal hover:bg-brand-teal-hover text-white text-sm font-bold py-3.5 px-6 rounded-xl transition-all shadow-md shadow-brand-teal/10 hover:shadow-brand-teal/20 select-none active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
           >
-            <Check className="w-4.5 h-4.5 stroke-[2.5]" />
+            {isSubmitting ? (
+              <Loader2 className="w-4.5 h-4.5 animate-spin" />
+            ) : (
+              <Check className="w-4.5 h-4.5 stroke-[2.5]" />
+            )}
             <span>{isSubmitting ? "Updating..." : "Update Task"}</span>
           </button>
           

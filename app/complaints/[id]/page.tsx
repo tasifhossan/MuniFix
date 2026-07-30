@@ -9,7 +9,7 @@ import Sidebar from "@/components/Sidebar";
 import Badge from "@/components/Badge";
 import ComplaintMetrics from "@/components/ComplaintMetrics";
 import Timeline from "@/components/Timeline";
-import { fetchComplaintById, updateComplaintStatus, deleteComplaint } from "@/lib/api";
+import { fetchComplaintById, updateComplaintStatus, deleteComplaint, fetchUsers } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function ComplaintDetailsPage() {
@@ -26,9 +26,43 @@ export default function ComplaintDetailsPage() {
   // Status update form states
   const [newStatus, setNewStatus] = useState("");
   const [updateNotes, setUpdateNotes] = useState("");
-  const [selectedWorkerId, setSelectedWorkerId] = useState("b2569e5d-16a8-4c22-b1e1-88f1c3272e7c");
+  const [selectedWorkerId, setSelectedWorkerId] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Category override states
+  const [overrideCategory, setOverrideCategory] = useState("");
+  const [isOverriding, setIsOverriding] = useState(false);
+  const [overrideError, setOverrideError] = useState<string | null>(null);
+
+  // Dynamic worker states
+  const [workers, setWorkers] = useState<any[]>([]);
+  const [workersLoading, setWorkersLoading] = useState(false);
+  const [workersError, setWorkersError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!complaint?.department_id || !user) return;
+    if (user.role !== "dept_admin" && user.role !== "super_admin") return;
+
+    async function getWorkers() {
+      setWorkersLoading(true);
+      setWorkersError(null);
+      try {
+        const res = await fetchUsers({
+          role: "field_worker",
+          department_id: complaint.department_id,
+        });
+        const list = res.users ?? res ?? [];
+        setWorkers(list);
+      } catch (err: any) {
+        setWorkersError("Failed to load workers. Please refresh.");
+      } finally {
+        setWorkersLoading(false);
+      }
+    }
+
+    getWorkers();
+  }, [complaint?.department_id, user?.role]);
 
   const id = params?.id as string;
 
@@ -58,12 +92,14 @@ export default function ComplaintDetailsPage() {
           category: c.category,
           date: c.created_at,
           reporter: c.citizen_name,
+          department_id: c.department_id,
           original: c
         };
         setComplaint(mapped);
         setAssignment(res.assignment);
         setHistory(res.history);
         setNewStatus(c.status);
+        setOverrideCategory(c.category || "");
       }
     } catch (err: any) {
       setError(err.message);
@@ -95,6 +131,38 @@ export default function ComplaintDetailsPage() {
       triggerToast(`Failed to update: ${err.message}`);
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleCategoryOverride = async () => {
+    if (!overrideCategory) return;
+    setIsOverriding(true);
+    setOverrideError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/complain/${id}/category`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            category: overrideCategory,
+            ai_override: true 
+          })
+        }
+      );
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      triggerToast('Category updated successfully');
+      // Refresh complaint data
+      await loadData();
+    } catch (err: any) {
+      setOverrideError(err.message);
+    } finally {
+      setIsOverriding(false);
     }
   };
 
@@ -357,12 +425,21 @@ export default function ComplaintDetailsPage() {
                     <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-xl text-xs border border-gray-150/40">
                       {complaint.category}
                     </span>
-                    {complaint.original?.ai_confidence_score !== undefined && parseFloat(complaint.original.ai_confidence_score) < 70 && (
-                      <span className="inline-flex items-center gap-1 bg-red-50 text-red-650 px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase border border-red-100 select-none">
-                        <AlertTriangle className="w-3 h-3 text-red-500" />
-                        <span>Needs Manual Review</span>
-                      </span>
-                    )}
+                    {(() => {
+                      const scoreVal = parseFloat(complaint.ai_confidence_score ?? complaint.original?.ai_confidence_score);
+                      if (isNaN(scoreVal)) return null;
+                      return scoreVal < 70 ? (
+                        <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase border border-amber-200 select-none">
+                          <AlertTriangle className="w-3 h-3 text-amber-500" />
+                          <span>Low AI confidence — manual review recommended</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase border border-emerald-200 select-none">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                          <span>AI categorized with high confidence</span>
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div className="flex justify-between items-start gap-4">
@@ -421,7 +498,6 @@ export default function ComplaintDetailsPage() {
           </div>
 
           {/* Admin / Dept Admin operations panel */}
-          {/* TODO: category override endpoint not implemented yet */}
           {user && (user.role === "dept_admin" || user.role === "super_admin") && (
             <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 text-brand-teal">
@@ -449,10 +525,29 @@ export default function ComplaintDetailsPage() {
                     <select
                       value={selectedWorkerId}
                       onChange={(e) => setSelectedWorkerId(e.target.value)}
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-teal bg-white font-semibold text-gray-800"
+                      disabled={workersLoading || workers.length === 0}
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-teal bg-white font-semibold text-gray-800 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                      <option value="b2569e5d-16a8-4c22-b1e1-88f1c3272e7c">Rahim Worker (Waste Dept)</option>
+                      {workersLoading ? (
+                        <option value="">Loading workers...</option>
+                      ) : workersError ? (
+                        <option value="">Failed to load workers</option>
+                      ) : workers.length === 0 ? (
+                        <option value="" disabled>No workers available in this department</option>
+                      ) : (
+                        <>
+                          <option value="">Select a field worker...</option>
+                          {workers.map((worker) => (
+                            <option key={worker.id} value={worker.id}>
+                              {worker.name}
+                            </option>
+                          ))}
+                        </>
+                      )}
                     </select>
+                    {workersError && (
+                      <span className="text-[10px] text-red-500 font-semibold mt-0.5 block">{workersError}</span>
+                    )}
                   </div>
                 )}
                 <div className="space-y-1.5 md:col-span-2">
@@ -475,6 +570,48 @@ export default function ComplaintDetailsPage() {
                   </button>
                 </div>
               </form>
+
+              {/* Category Override Section */}
+              <div className="pt-4 border-t border-gray-100 space-y-3">
+                <div>
+                  <h4 className="text-xs font-black text-gray-800 uppercase tracking-wider">AI Category Override</h4>
+                  <p className="text-[10px] text-gray-400 font-semibold">Change the AI-assigned category of this complaint if it was misclassified.</p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-end gap-4">
+                  <div className="space-y-1.5 w-full sm:max-w-xs">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">New Category</label>
+                    <select
+                      value={overrideCategory}
+                      onChange={(e) => setOverrideCategory(e.target.value)}
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-teal bg-white font-semibold text-gray-800"
+                    >
+                      <option value="Waterlogging">Waterlogging</option>
+                      <option value="Road Repair">Road Repair</option>
+                      <option value="Waste Management">Waste Management</option>
+                      <option value="Electricity">Electricity</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCategoryOverride}
+                    disabled={isOverriding || !overrideCategory}
+                    className="bg-brand-teal hover:bg-brand-teal-hover text-white text-xs font-bold py-3 px-6 rounded-xl transition-all shadow-md active:scale-[0.98] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isOverriding ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      "Override Category"
+                    )}
+                  </button>
+                </div>
+                {overrideError && (
+                  <p className="text-red-500 text-xs font-semibold">{overrideError}</p>
+                )}
+              </div>
             </div>
           )}
 

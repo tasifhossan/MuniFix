@@ -56,7 +56,16 @@ export default function NewComplaintPage() {
     setIsSearchingLocation(true);
     setDetectedArea("Searching address...");
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=bd`,
+        {
+          headers: {
+            'User-Agent': 'MuniFix-Ctg/1.0 contact@munifix.ctg',
+            'Accept-Language': 'en',
+            'Accept': 'application/json'
+          }
+        }
+      );
       const data = await res.json();
       if (data && data[0]) {
         const lat = parseFloat(data[0].lat);

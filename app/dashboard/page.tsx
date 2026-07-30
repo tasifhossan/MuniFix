@@ -378,7 +378,7 @@ export default function CitizenDashboard() {
           </div>
         </div>
         <div className="border-t border-slate-150 py-4 max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center text-[10px] font-semibold text-gray-400 gap-2">
-          <span>&copy; 2026 MuniFix Ctg. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
           <span>Official platform for <strong className="text-gray-700">Chattogram City Corporation</strong></span>
         </div>
       </footer>

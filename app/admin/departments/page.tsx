@@ -7,12 +7,13 @@ import DepartmentStatsCard from "@/components/DepartmentStatsCard";
 import DepartmentTable, { DepartmentItem } from "@/components/DepartmentTable";
 import DepartmentLoadBalance from "@/components/DepartmentLoadBalance";
 import OperationalGuidelines from "@/components/OperationalGuidelines";
-import { fetchAdminDepartments } from "@/lib/api";
+import { fetchDepartments, createDepartment, updateDepartment, deleteDepartment } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Icon mapping helper based on department name
 function getIconType(name: string): "water" | "light" | "waste" | "road" {
   const n = name?.toLowerCase() || "";
-  if (n.includes("water") || n.includes("sewerage")) return "water";
+  if (n.includes("water") || n.includes("sewerage") || n.includes("waterlogging")) return "water";
   if (n.includes("light") || n.includes("electricity") || n.includes("power")) return "light";
   if (n.includes("waste") || n.includes("garbage") || n.includes("sanitation")) return "waste";
   return "road";
@@ -37,6 +38,10 @@ function getComplaintBadgeClass(activeCount: number): string {
 }
 
 export default function AdminDepartmentsPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "super_admin";
+  const isDeptAdmin = user?.role === "dept_admin";
+
   const [searchTerm, setSearchTerm] = useState("");
   const [departments, setDepartments] = useState<DepartmentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,10 +51,13 @@ export default function AdminDepartmentsPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetchAdminDepartments();
-      const rawList = res.departments ?? res ?? [];
+      const res = await fetchDepartments();
+      let rawList = res.departments ?? res ?? [];
+      if (isDeptAdmin && user?.department_id) {
+        rawList = rawList.filter((d: any) => String(d.id) === String(user.department_id));
+      }
       const mappedList: DepartmentItem[] = rawList.map((d: any) => ({
-        id: d.id,
+        id: String(d.id),
         name: d.name,
         subtitle: d.description || "City operations and maintenance",
         iconType: getIconType(d.name),
@@ -72,6 +80,51 @@ export default function AdminDepartmentsPage() {
   useEffect(() => {
     loadDepartments();
   }, []);
+
+  // CRUD actions
+  const handleAddDepartment = async () => {
+    const name = prompt("Enter new department name:");
+    if (!name || name.trim() === "") return;
+    const description = prompt("Enter new department description (optional):") || "";
+    try {
+      setLoading(true);
+      await createDepartment({ name, description });
+      alert("New department registered successfully.");
+      loadDepartments();
+    } catch (err: any) {
+      alert("Failed to add department: " + err.message);
+      setLoading(false);
+    }
+  };
+
+  const handleEditDepartment = async (item: DepartmentItem) => {
+    const name = prompt("Enter updated department name:", item.name);
+    if (!name || name.trim() === "") return;
+    const description = prompt("Enter updated department description:", item.subtitle) || "";
+    try {
+      setLoading(true);
+      await updateDepartment(item.id, { name, description });
+      alert("Department updated successfully.");
+      loadDepartments();
+    } catch (err: any) {
+      alert("Failed to edit department: " + err.message);
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteDepartment = async (item: DepartmentItem) => {
+    if (confirm(`Are you sure you want to delete department: ${item.name}?`)) {
+      try {
+        setLoading(true);
+        await deleteDepartment(item.id);
+        alert("Department deleted successfully.");
+        loadDepartments();
+      } catch (err: any) {
+        alert("Failed to delete department: " + err.message);
+        setLoading(false);
+      }
+    }
+  };
 
   // Filtering logic
   const filteredDepartments = departments.filter((dept) => {
@@ -124,10 +177,15 @@ export default function AdminDepartmentsPage() {
               </button>
 
               {/* Add Department Button */}
-              <button className="inline-flex items-center gap-1.5 bg-[#005c55] hover:bg-[#004540] text-white text-xs font-black px-4 py-2.5 rounded-xl transition-all cursor-pointer active:scale-95 shadow-md shadow-[#005c55]/10 select-none">
-                <Plus className="w-4 h-4 stroke-[2.5]" />
-                <span>Add Department</span>
-              </button>
+              {isSuperAdmin && (
+                <button 
+                  onClick={handleAddDepartment}
+                  className="inline-flex items-center gap-1.5 bg-[#005c55] hover:bg-[#004540] text-white text-xs font-black px-4 py-2.5 rounded-xl transition-all cursor-pointer active:scale-95 shadow-md shadow-[#005c55]/10 select-none"
+                >
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                  <span>Add Department</span>
+                </button>
+              )}
             </div>
           </header>
 
@@ -196,8 +254,8 @@ export default function AdminDepartmentsPage() {
               <DepartmentTable
                 items={filteredDepartments}
                 totalCount={departments.length}
-                onEdit={(item) => alert(`Editing department: ${item.name}`)}
-                onDelete={(item) => alert(`Deleting department: ${item.name}`)}
+                onEdit={isSuperAdmin ? handleEditDepartment : undefined}
+                onDelete={isSuperAdmin ? handleDeleteDepartment : undefined}
               />
             )}
 

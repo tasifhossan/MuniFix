@@ -14,7 +14,8 @@ import {
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminHeader from "@/components/AdminHeader";
 import UserStatsCard from "@/components/UserStatsCard";
-import { updateUserRole } from "@/lib/api";
+import { updateUserRole, updateUserStatus, fetchUsers, fetchMyProfile, fetchDepartments } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AdminUser {
   id: string;
@@ -29,100 +30,20 @@ interface AdminUser {
   avatarText: string;
 }
 
-const initialUsers: AdminUser[] = [
-  {
-    id: "ca7db62f-d1cf-4d0e-99f0-c76c4db52c1b",
-    name: "Admin 1",
-    email: "1@admin.com",
-    department: "Waterlogging",
-    department_id: 1,
-    role: "dept_admin",
-    status: true,
-    initials: "A1",
-    avatarBg: "bg-[#e0f2fe]",
-    avatarText: "text-[#0369a1]",
-  },
-  {
-    id: "c90adc34-76dc-49a5-bdf2-3ccf6fa9f712",
-    name: "Tasif Worker",
-    email: "tasif@worker.com",
-    department: "Waterlogging",
-    department_id: 1,
-    role: "field_worker",
-    status: true,
-    initials: "TW",
-    avatarBg: "bg-[#e2f2f0]",
-    avatarText: "text-[#0f766e]",
-  },
-  {
-    id: "c5421a99-d0bc-48dd-a158-800805cad038",
-    name: "SuperAdmin 1",
-    email: "1@suadmin.com",
-    department: "Waterlogging",
-    department_id: 1,
-    role: "super_admin",
-    status: true,
-    initials: "SA",
-    avatarBg: "bg-[#f1f5f9]",
-    avatarText: "text-[#475569]",
-  },
-  {
-    id: "c59d9c2e-4b6b-4e12-87ad-d345ff4b10b0",
-    name: "Super Admin",
-    email: "admin@munifix.gov",
-    department: "General",
-    department_id: null,
-    role: "super_admin",
-    status: true,
-    initials: "SA",
-    avatarBg: "bg-[#f1f5f9]",
-    avatarText: "text-[#475569]",
-  },
-  {
-    id: "b2569e5d-16a8-4c22-b1e1-88f1c3272e7c",
-    name: "Rahim Worker",
-    email: "rahim@munifix.gov",
-    department: "Waste Management",
-    department_id: 3,
-    role: "field_worker",
-    status: true,
-    initials: "RW",
-    avatarBg: "bg-[#e0f2fe]",
-    avatarText: "text-[#0369a1]",
-  },
-  {
-    id: "7bdc3b6b-3d53-4e8d-9d8a-5e17cfe00303",
-    name: "Waste Admin",
-    email: "wasteadmin@munifix.gov",
-    department: "Waste Management",
-    department_id: 3,
-    role: "dept_admin",
-    status: true,
-    initials: "WA",
-    avatarBg: "bg-[#e2f2f0]",
-    avatarText: "text-[#0f766e]",
-  },
-  {
-    id: "3447ecce-db52-4fa0-9354-f9ea17bfe831",
-    name: "Roads Admin",
-    email: "roadsadmin@munifix.gov",
-    department: "Road Repair",
-    department_id: 2,
-    role: "dept_admin",
-    status: true,
-    initials: "RA",
-    avatarBg: "bg-[#f1f5f9]",
-    avatarText: "text-[#475569]",
-  }
-];
-
 export default function RolePermissionsPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [users, setUsers] = useState<AdminUser[]>(initialUsers);
-  const [savedState, setSavedState] = useState<AdminUser[]>(initialUsers);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [savedState, setSavedState] = useState<AdminUser[]>([]);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Profile data for header
+  const { user: authUser } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
 
   // Auto-hide toast after 3 seconds
   useEffect(() => {
@@ -134,9 +55,105 @@ export default function RolePermissionsPage() {
     }
   }, [showToast]);
 
-  const handleToggleStatus = (id: string) => {
-    // TODO: backend endpoint not implemented yet
-    alert("User status toggle (activation/deactivation) backend endpoint is not implemented yet.");
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [usersRes, deptsRes] = await Promise.all([
+        fetchUsers({ role: "dept_admin,super_admin" }),
+        fetchDepartments(),
+      ]);
+      const rawUsers = usersRes.users ?? usersRes ?? [];
+      const depts = deptsRes.departments ?? deptsRes ?? [];
+      const deptMap = new Map<number, string>(depts.map((d: any) => [d.id, d.name]));
+
+      // Filter out citizens to only show staff/admin users
+      const staffRaw = rawUsers.filter((u: any) => u.role !== "citizen");
+
+      const mapped = staffRaw.map((u: any) => {
+        // Initials
+        const initials = (u.name || "SU")
+          .split(" ")
+          .map((n: string) => n[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2);
+
+        // Avatar colors
+        const bgs = ["bg-[#e0f2fe]", "bg-[#e2f2f0]", "bg-[#f1f5f9]", "bg-[#fee2e2]", "bg-[#fef3c7]"];
+        const texts = ["text-[#0369a1]", "text-[#0f766e]", "text-[#475569]", "text-[#b91c1c]", "text-[#b45309]"];
+        let hash = 0;
+        const nameStr = u.name || "";
+        for (let i = 0; i < nameStr.length; i++) {
+          hash = nameStr.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const idx = Math.abs(hash) % bgs.length;
+
+        return {
+          id: u.id || u._id,
+          name: u.name || "Unnamed User",
+          email: u.email || "No Email",
+          department: deptMap.get(u.department_id) || "General",
+          department_id: u.department_id || null,
+          role: u.role || "field_worker",
+          status: u.is_active !== false,
+          initials,
+          avatarBg: bgs[idx],
+          avatarText: texts[idx],
+        };
+      });
+
+      setUsers(mapped);
+      setSavedState(JSON.parse(JSON.stringify(mapped)));
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch staff data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+
+    async function loadProfile() {
+      try {
+        const p = await fetchMyProfile();
+        setProfile(p.profile ?? p.user ?? p);
+      } catch (err) {
+        console.error("Failed to load header admin profile", err);
+      }
+    }
+    loadProfile();
+  }, []);
+
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setShowToast(true);
+  };
+
+  const handleToggleStatus = async (user: AdminUser) => {
+    setToggleLoading(user.id);
+    setError(null);
+    try {
+      const newStatus = !user.status;
+      await updateUserStatus(user.id, newStatus);
+      
+      setUsers(prev =>
+        prev.map(u => (u.id === user.id ? { ...u, status: newStatus } : u))
+      );
+      setSavedState(prev =>
+        prev.map(u => (u.id === user.id ? { ...u, status: newStatus } : u))
+      );
+      triggerToast(`User status updated to ${newStatus ? "Active" : "Inactive"}`);
+    } catch (err: any) {
+      if (err.message && (err.message.includes("404") || err.message.toLowerCase().includes("not found") || err.message.toLowerCase().includes("not implemented"))) {
+        setError("This feature is not available yet");
+      } else {
+        setError(err.message || "Failed to update user status");
+      }
+    } finally {
+      setToggleLoading(null);
+    }
   };
 
   const handleRoleChange = (id: string, newRole: string) => {
@@ -163,8 +180,9 @@ export default function RolePermissionsPage() {
         });
       }
 
-      setSavedState([...users]);
-      setShowToast(true);
+      setSavedState(JSON.parse(JSON.stringify(users)));
+      triggerToast("Changes saved successfully");
+      await loadData();
     } catch (err: any) {
       setError(err.message || "Failed to update role privileges");
     } finally {
@@ -173,7 +191,7 @@ export default function RolePermissionsPage() {
   };
 
   const handleDiscardChanges = () => {
-    setUsers([...savedState]);
+    setUsers(JSON.parse(JSON.stringify(savedState)));
     setError(null);
   };
 
@@ -207,15 +225,15 @@ export default function RolePermissionsPage() {
           <AdminHeader
             variant="permissions"
             title="Role & Permissions"
-            userRole="Super Admin"
-            userSubtitle="CCC Headquarters"
+            userRole={profile?.name || authUser?.name || "Admin User"}
+            userSubtitle={profile?.role === "super_admin" ? "Super Admin" : profile?.role || authUser?.role || "Administrator"}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
           />
 
           <main className="px-8 py-6 space-y-6 flex-1">
             {error && (
-              <div className="p-4 bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold rounded-2xl animate-fade-in flex items-center gap-2">
+              <div className="p-4 bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold rounded-2xl animate-fade-in flex items-center gap-2 select-none">
                 <span>⚠️</span>
                 <span>{error}</span>
               </div>
@@ -227,21 +245,24 @@ export default function RolePermissionsPage() {
               {/* Total Staff Stats */}
               <UserStatsCard
                 title="Total Staff"
-                value="142"
+                value={loading ? "..." : users.length.toString()}
                 icon={<Users className="w-5 h-5 text-emerald-600" />}
               />
 
               {/* Super Admins Stats */}
               <UserStatsCard
                 title="Super Admins"
-                value="08"
+                value={loading ? "..." : users.filter(u => u.role === "super_admin").length.toString()}
                 icon={<ShieldCheck className="w-5 h-5 text-blue-600" />}
               />
 
               {/* Pending Changes Stats */}
               <UserStatsCard
                 title="Pending Role Changes"
-                value="03"
+                value={loading ? "..." : users.filter(user => {
+                  const original = savedState.find(o => o.id === user.id);
+                  return original && original.role !== user.role;
+                }).length.toString()}
                 icon={<ClipboardList className="w-5 h-5 text-amber-600" />}
               />
 
@@ -254,7 +275,7 @@ export default function RolePermissionsPage() {
                   <UserPlus className="w-5 h-5 text-teal-200" />
                 </div>
                 <button
-                  onClick={() => alert("Add new member modal/form goes here...")}
+                  onClick={() => triggerToast("Feature coming soon: Add New Member")}
                   className="w-full bg-white text-[#005c55] border border-transparent hover:bg-teal-50 text-xs font-extrabold py-2 px-4 rounded-xl shadow-sm text-center transition-all cursor-pointer select-none active:scale-[0.98] mt-1"
                 >
                   Add New Member
@@ -263,156 +284,182 @@ export default function RolePermissionsPage() {
 
             </div>
 
-            {/* Administrators list card */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
-              
-              {/* Card Header */}
-              <div className="p-6 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 select-none">
-                <h2 className="text-base font-extrabold text-slate-900 tracking-tight leading-none">
-                  System Administrators & Roles
-                </h2>
-                <div className="flex items-center gap-3">
-                  <button className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm cursor-pointer transition-all active:scale-[0.98]">
-                    <Download className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Export CSV</span>
-                  </button>
-                  <button className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm cursor-pointer transition-all active:scale-[0.98]">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Filter by Dept</span>
-                  </button>
+            {/* Administrators list card / Loading / Error */}
+            {loading ? (
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden p-6 space-y-4 animate-pulse">
+                <div className="h-8 bg-slate-200 rounded-lg w-1/4" />
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="grid grid-cols-5 gap-4 py-3 border-b border-slate-100">
+                      <div className="h-10 bg-slate-200 rounded-full w-10 col-span-1" />
+                      <div className="h-5 bg-slate-200 rounded w-5/6 col-span-2" />
+                      <div className="h-5 bg-slate-200 rounded w-1/2 col-span-1" />
+                      <div className="h-5 bg-slate-200 rounded w-1/3 col-span-1" />
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {/* Table section */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse table-auto min-w-[700px]">
-                  {/* Table Header */}
-                  <thead className="bg-[#f8fafc] border-b border-slate-200/50 select-none">
-                    <tr>
-                      <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        User
-                      </th>
-                      <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        Department
-                      </th>
-                      <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest w-56">
-                        Assigned Role
-                      </th>
-                      <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest w-36">
-                        Status
-                      </th>
-                      <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest w-16 text-right">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-
-                  {/* Table Body */}
-                  <tbody className="divide-y divide-slate-150/60">
-                    {filteredUsers.map((user) => (
-                      <tr
-                        key={user.id}
-                        className="transition-colors duration-150 hover:bg-slate-50/40"
-                      >
-                        {/* User identity cell */}
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8.5 h-8.5 rounded-full flex items-center justify-center text-xs font-black shadow-inner select-none shrink-0 ${user.avatarBg} ${user.avatarText}`}>
-                              {user.initials}
-                            </div>
-                            <div className="flex flex-col leading-tight">
-                              <span className="text-sm font-bold text-slate-800">
-                                {user.name}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-400 mt-0.5 select-all">
-                                {user.email}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Department cell */}
-                        <td className="py-4 px-6 vertical-middle text-sm font-bold text-slate-500">
-                          {user.department}
-                        </td>
-
-                        {/* Role selection dropdown cell */}
-                        <td className="py-4 px-6 vertical-middle">
-                          <div className="relative w-48">
-                            <select
-                              value={user.role}
-                              onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                              className="w-full bg-[#f8fafc]/60 border border-slate-205 rounded-xl py-1.5 pl-3.5 pr-8 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#005c55] cursor-pointer appearance-none shadow-sm transition-all"
-                            >
-                              <option value="citizen">Citizen</option>
-                              <option value="field_worker">Field Worker</option>
-                              <option value="dept_admin">Department Admin</option>
-                              <option value="super_admin">Super Admin</option>
-                            </select>
-                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Toggle switch status cell */}
-                        <td className="py-4 px-6 vertical-middle">
-                          <div className="flex items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleStatus(user.id)}
-                              className={`relative inline-flex h-5.5 w-10.5 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-205 ease-in-out focus:outline-none ${
-                                user.status ? "bg-[#005c55]" : "bg-slate-250/90"
-                              }`}
-                            >
-                              <span
-                                className={`pointer-events-none inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow-sm ring-0 transition duration-205 ease-in-out ${
-                                  user.status ? "translate-x-5" : "translate-x-0"
-                                }`}
-                              />
-                            </button>
-                            <span className="text-xs font-bold text-slate-500 w-12 select-none">
-                              {user.status ? "Active" : "Inactive"}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* Actions button cell */}
-                        <td className="py-4 px-6 text-right vertical-middle">
-                          <button className="p-1 text-slate-400 hover:text-[#005c55] hover:bg-slate-50 rounded-lg cursor-pointer transition-all active:scale-90 inline-flex">
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Table Footer Actions block */}
-              <div className="bg-[#f8fafc]/50 border-t border-slate-100 p-6 flex flex-wrap items-center justify-between gap-4">
-                <span className="text-xs font-bold text-slate-400 select-none">
-                  Showing {filteredUsers.length} of 142 administrators
-                </span>
+            ) : (
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between animate-fade-in">
                 
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleDiscardChanges}
-                    className="inline-flex items-center justify-center bg-white border border-slate-205 hover:bg-slate-50 text-slate-700 text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm cursor-pointer transition-all select-none active:scale-[0.98]"
-                  >
-                    Discard Changes
-                  </button>
-                  <button
-                    onClick={handleSaveChanges}
-                    disabled={saving}
-                    className="inline-flex items-center justify-center bg-[#005c55] hover:bg-[#004540] text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-md cursor-pointer transition-all select-none active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {saving ? "Saving..." : "Save Changes"}
-                  </button>
+                {/* Card Header */}
+                <div className="p-6 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 select-none">
+                  <h2 className="text-base font-extrabold text-slate-900 tracking-tight leading-none">
+                    System Administrators & Roles
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => triggerToast("Feature coming soon: Export CSV")}
+                      className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm cursor-pointer transition-all active:scale-[0.98]"
+                    >
+                      <Download className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Export CSV</span>
+                    </button>
+                    <button 
+                      onClick={() => triggerToast("Feature coming soon: Filter by Dept")}
+                      className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm cursor-pointer transition-all active:scale-[0.98]"
+                    >
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Filter by Dept</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-            </div>
+                {/* Table section */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse table-auto min-w-[700px]">
+                    {/* Table Header */}
+                    <thead className="bg-[#f8fafc] border-b border-slate-200/50 select-none">
+                      <tr>
+                        <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                          User
+                        </th>
+                        <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                          Department
+                        </th>
+                        <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest w-56">
+                          Assigned Role
+                        </th>
+                        <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest w-36">
+                          Status
+                        </th>
+                        <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest w-16 text-right">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+
+                    {/* Table Body */}
+                    <tbody className="divide-y divide-slate-150/60">
+                      {filteredUsers.map((user) => (
+                        <tr
+                          key={user.id}
+                          className="transition-colors duration-150 hover:bg-slate-50/40"
+                        >
+                          {/* User identity cell */}
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8.5 h-8.5 rounded-full flex items-center justify-center text-xs font-black shadow-inner select-none shrink-0 ${user.avatarBg} ${user.avatarText}`}>
+                                {user.initials}
+                              </div>
+                              <div className="flex flex-col leading-tight">
+                                <span className="text-sm font-bold text-slate-800">
+                                  {user.name}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400 mt-0.5 select-all">
+                                  {user.email}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Department cell */}
+                          <td className="py-4 px-6 vertical-middle text-sm font-bold text-slate-500">
+                            {user.department}
+                          </td>
+
+                          {/* Role selection dropdown cell */}
+                          <td className="py-4 px-6 vertical-middle">
+                            <div className="relative w-48">
+                              <select
+                                value={user.role}
+                                onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                                className="w-full bg-[#f8fafc]/60 border border-slate-205 rounded-xl py-1.5 pl-3.5 pr-8 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#005c55] cursor-pointer appearance-none shadow-sm transition-all"
+                              >
+                                <option value="citizen">Citizen</option>
+                                <option value="field_worker">Field Worker</option>
+                                <option value="dept_admin">Department Admin</option>
+                                <option value="super_admin">Super Admin</option>
+                              </select>
+                              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Toggle switch status cell */}
+                          <td className="py-4 px-6 vertical-middle">
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                disabled={toggleLoading === user.id}
+                                onClick={() => handleToggleStatus(user)}
+                                className={`relative inline-flex h-5.5 w-10.5 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-205 ease-in-out focus:outline-none ${
+                                  user.status ? "bg-[#005c55]" : "bg-slate-250/90"
+                                } ${toggleLoading === user.id ? "opacity-60 cursor-wait" : ""}`}
+                              >
+                                <span
+                                  className={`pointer-events-none inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow-sm ring-0 transition duration-205 ease-in-out ${
+                                    user.status ? "translate-x-5" : "translate-x-0"
+                                  }`}
+                                />
+                              </button>
+                              <span className="text-xs font-bold text-slate-500 w-12 select-none">
+                                {user.status ? "Active" : "Inactive"}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Actions button cell */}
+                          <td className="py-4 px-6 text-right vertical-middle">
+                            <button 
+                              onClick={() => triggerToast(`Actions menu for ${user.name}`)}
+                              className="p-1 text-slate-400 hover:text-[#005c55] hover:bg-slate-50 rounded-lg cursor-pointer transition-all active:scale-90 inline-flex"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Table Footer Actions block */}
+                <div className="bg-[#f8fafc]/50 border-t border-slate-100 p-6 flex flex-wrap items-center justify-between gap-4">
+                  <span className="text-xs font-bold text-slate-400 select-none">
+                    Showing {filteredUsers.length} of {users.length} administrators
+                  </span>
+                  
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleDiscardChanges}
+                      className="inline-flex items-center justify-center bg-white border border-slate-205 hover:bg-slate-50 text-slate-700 text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm cursor-pointer transition-all select-none active:scale-[0.98]"
+                    >
+                      Discard Changes
+                    </button>
+                    <button
+                      onClick={handleSaveChanges}
+                      disabled={saving}
+                      className="inline-flex items-center justify-center bg-[#005c55] hover:bg-[#004540] text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-md cursor-pointer transition-all select-none active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {saving ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            )}
 
           </main>
         </div>
@@ -435,13 +482,13 @@ export default function RolePermissionsPage() {
 
       {/* Floating Success Toast notification in bottom-right corner */}
       {showToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-[#1e293b] text-white text-xs font-bold px-4.5 py-3 rounded-2xl shadow-xl transition-all duration-300 transform scale-100 select-none animate-fade-in border border-slate-800">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-[#1e293b] text-white text-xs font-bold px-4.5 py-3 rounded-2xl shadow-xl transition-all duration-300 transform scale-100 select-none border border-slate-800">
           <div className="w-5 h-5 bg-[#10b981] text-[#1e293b] rounded-full flex items-center justify-center shadow-inner shrink-0">
-            <svg className="w-3.5 h-3.5 font-bold" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 font-bold text-[#1e293b]" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <span>Changes saved successfully</span>
+          <span>{toastMessage}</span>
         </div>
       )}
     </div>

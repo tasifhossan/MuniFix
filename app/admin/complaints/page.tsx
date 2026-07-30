@@ -5,8 +5,18 @@ import AdminSidebar from "@/components/AdminSidebar";
 import AdminHeader from "@/components/AdminHeader";
 import ComplaintFilters from "@/components/ComplaintFilters";
 import ComplaintsTable, { ComplaintItem } from "@/components/ComplaintsTable";
-import { fetchComplaints } from "@/lib/api";
+import AssignWorkerModal from "@/components/AssignWorkerModal";
+import { 
+  fetchAdminComplaints, 
+  fetchDepartments, 
+  searchComplaints, 
+  assignComplaint, 
+  deleteComplaint, 
+  updateComplaintStatus,
+  fetchMyProfile 
+} from "@/lib/api";
 import { Loader2, AlertTriangle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Priority mapper from backend values
 function mapPriority(p: string): "Critical" | "High" | "Medium" | "Low" {
@@ -35,17 +45,24 @@ function mapStatus(s: string): "Pending" | "In Progress" | "Assigned" | "Resolve
 // Dot color helper based on department name
 function getDepartmentDotColor(deptName: string): string {
   const map: Record<string, string> = {
+    "Waterlogging": "bg-blue-500",
     "Water Supply": "bg-blue-500",
     "Waste Mgmt": "bg-green-500",
     "Waste Management": "bg-green-500",
+    "Road Repair": "bg-orange-500",
     "Infrastructure": "bg-orange-500",
     "Public Safety": "bg-red-500",
     "Health": "bg-purple-500",
+    "Electricity": "bg-indigo-500"
   };
   return map[deptName] ?? "bg-slate-400";
 }
 
 export default function AdminComplaintsPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "super_admin";
+  const isDeptAdmin = user?.role === "dept_admin";
+
   const [activeNav, setActiveNav] = useState("complaints");
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -57,21 +74,81 @@ export default function AdminComplaintsPage() {
 
   // Dynamic Complaints state
   const [complaints, setComplaints] = useState<ComplaintItem[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+
+  useEffect(() => {
+    async function getProfile() {
+      try {
+        const p = await fetchMyProfile();
+        setProfile(p.profile ?? p.user ?? p);
+      } catch (err) {}
+    }
+    getProfile();
+  }, []);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Modal target complaint
+  const [selectedAssignComplaint, setSelectedAssignComplaint] = useState<ComplaintItem | null>(null);
 
   async function loadComplaints() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchComplaints();
+      
+      // Load departments for mapping if not loaded yet
+      let depts = departmentsList;
+      if (depts.length === 0) {
+        const deptData = await fetchDepartments();
+        depts = deptData.departments ?? deptData ?? [];
+        setDepartmentsList(depts);
+      }
+
+      let department_id = undefined;
+      if (isDeptAdmin) {
+        department_id = user?.department_id;
+      } else {
+        const matchedDept = depts.find((d: any) => d.name === departmentFilter);
+        department_id = matchedDept ? matchedDept.id : undefined;
+      }
+
+      let data;
+      if (searchTerm) {
+        console.log("[AdminComplaints] Searching with query:", searchTerm);
+        data = await searchComplaints({
+          q: searchTerm,
+          category: (!isDeptAdmin && departmentFilter !== "All") ? departmentFilter : undefined,
+          priority: priorityFilter !== "All" ? priorityFilter : undefined,
+          status: statusFilter !== "All" ? statusFilter : undefined
+        });
+      } else {
+        console.log("[AdminComplaints] Fetching with filters:", { statusFilter, priorityFilter, department_id });
+        data = await fetchAdminComplaints({
+          status: statusFilter,
+          priority: priorityFilter,
+          department_id
+        });
+      }
+
+      console.log("[AdminComplaints] API Response:", data);
+
       if (data.success) {
-        const rawList = data.complaints ?? data.complains ?? [];
+        let rawList = data.complaints ?? data.complains ?? [];
+        // Securely filter out other departments' data for dept_admin
+        if (isDeptAdmin && user?.department_id) {
+          rawList = rawList.filter((c: any) => c.department_id === user.department_id);
+        }
+        console.log("[AdminComplaints] Raw complaints count:", rawList.length);
         const mappedList: ComplaintItem[] = rawList.map((c: any) => ({
           id: c.id,
           category: c.category || "Other",
-          department: c.department_name || "Infrastructure",
-          departmentDotColor: getDepartmentDotColor(c.department_name || "Infrastructure"),
+          department: c.department_name || (depts.find((d: any) => d.id === c.department_id)?.name) || "Infrastructure",
+          departmentId: c.department_id,
+          departmentDotColor: getDepartmentDotColor(c.department_name || (depts.find((d: any) => d.id === c.department_id)?.name) || "Infrastructure"),
           priority: mapPriority(c.priority),
           status: mapStatus(c.status),
           dateReported: new Date(c.created_at).toLocaleDateString("en-US", {
@@ -93,48 +170,65 @@ export default function AdminComplaintsPage() {
     }
   }
 
+  // Trigger reloading whenever filters or search terms change
   useEffect(() => {
+    setCurrentPage(1);
     loadComplaints();
-  }, []);
+  }, [departmentFilter, priorityFilter, statusFilter, searchTerm]);
 
-  // Filter complaints based on user selections
-  const filteredComplaints = complaints.filter((comp) => {
-    // Search Term matching (ID, category, department)
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      const matchesId = comp.id.toLowerCase().includes(term);
-      const matchesCategory = comp.category.toLowerCase().includes(term);
-      const matchesDept = comp.department.toLowerCase().includes(term);
-      if (!matchesId && !matchesCategory && !matchesDept) {
-        return false;
+  // Actions
+  const handleAssign = async (workerId: string) => {
+    if (!selectedAssignComplaint) return;
+    try {
+      await assignComplaint(selectedAssignComplaint.id, { worker_id: workerId });
+      alert("Worker assigned successfully!");
+      loadComplaints();
+    } catch (err: any) {
+      alert("Failed to assign worker: " + err.message);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this complaint?")) {
+      try {
+        await deleteComplaint(id);
+        alert("Complaint deleted successfully!");
+        loadComplaints();
+      } catch (err: any) {
+        alert("Failed to delete complaint: " + err.message);
       }
     }
+  };
 
-    // Department filter
-    if (departmentFilter !== "All" && comp.department !== departmentFilter) {
-      return false;
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    let dbStatus = newStatus.toLowerCase();
+    if (dbStatus === "in progress") dbStatus = "in_progress";
+    if (dbStatus === "under review") dbStatus = "pending"; // backend maps under review back to pending or is status pending? Let's check status_enum: pending, assigned, in_progress, resolved, cancelled.
+
+    try {
+      await updateComplaintStatus(id, { status: dbStatus });
+      alert("Complaint status updated successfully!");
+      loadComplaints();
+    } catch (err: any) {
+      alert("Failed to update status: " + err.message);
     }
+  };
 
-    // Priority filter
-    if (priorityFilter !== "All" && comp.priority !== priorityFilter) {
-      return false;
-    }
-
-    // Status filter
-    if (statusFilter !== "All" && comp.status !== statusFilter) {
-      return false;
-    }
-
-    return true;
-  });
+  // Slice list for local pagination
+  const itemsPerPage = 10;
+  const paginatedComplaints = complaints.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex font-sans">
       {/* Sidebar - Left panel */}
       <AdminSidebar 
+        role={profile?.role === "super_admin" ? "superadmin" : "admin"}
         activeNav={activeNav} 
         onNavClick={setActiveNav} 
-        hideUsersAndDepartments={true}
+        hideUsersAndDepartments={false}
         settingsPlacement="top"
         newReportPlacement="bottom"
       />
@@ -146,7 +240,8 @@ export default function AdminComplaintsPage() {
           <AdminHeader 
             variant="overview" 
             title="Complaint Overview" 
-            userRole="Super Administrator"
+            userRole={profile?.name || user?.name || "Admin User"}
+            userSubtitle={profile?.role === "super_admin" ? "Super Admin" : profile?.role || user?.role || "Administrator"}
             searchTerm={searchTerm} 
             onSearchChange={setSearchTerm} 
           />
@@ -167,6 +262,7 @@ export default function AdminComplaintsPage() {
               onExport={() => {
                 alert("Exporting data as CSV/Excel...");
               }}
+              hideDepartment={isDeptAdmin}
             />
 
             {loading ? (
@@ -189,8 +285,13 @@ export default function AdminComplaintsPage() {
             ) : (
               /* Complaints Table */
               <ComplaintsTable
-                items={filteredComplaints}
+                items={paginatedComplaints}
                 totalCount={complaints.length}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                onAssignClick={(item) => setSelectedAssignComplaint(item)}
+                onDeleteClick={handleDelete}
+                onStatusChange={handleStatusChange}
               />
             )}
           </main>
@@ -211,6 +312,20 @@ export default function AdminComplaintsPage() {
           </span>
         </footer>
       </div>
+
+      {/* Assign Worker Modal */}
+      {selectedAssignComplaint && (
+        <AssignWorkerModal
+          isOpen={!!selectedAssignComplaint}
+          onClose={() => setSelectedAssignComplaint(null)}
+          complaintId={selectedAssignComplaint.id}
+          priority={selectedAssignComplaint.priority}
+          category={selectedAssignComplaint.category}
+          location="Chattogram Municipal"
+          departmentId={selectedAssignComplaint.departmentId}
+          onConfirm={handleAssign}
+        />
+      )}
     </div>
   );
 }

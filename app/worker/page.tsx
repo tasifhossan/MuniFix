@@ -9,7 +9,6 @@ import {
   CheckCircle,
   Filter,
   ArrowUpDown,
-  Loader2,
   RefreshCw
 } from "lucide-react";
 import WorkerSidebar from "@/components/WorkerSidebar";
@@ -34,7 +33,7 @@ function mapStatus(s: string): "In Progress" | "Assigned" | "Resolved" {
     in_progress: "In Progress",
     assigned: "Assigned",
     resolved: "Resolved",
-    pending: "Assigned", // pending shown as assigned from worker's perspective
+    pending: "Assigned",
     cancelled: "Resolved",
   };
   return map[s?.toLowerCase()] ?? "Assigned";
@@ -50,7 +49,6 @@ function timeAgo(dateStr: string): string {
   return `Reported ${days}d ago`;
 }
 
-// Category → default fallback image
 function categoryImage(category: string): string {
   const map: Record<string, string> = {
     "Waterlogging": "/clogged-drain.png",
@@ -63,7 +61,6 @@ function categoryImage(category: string): string {
 }
 
 export default function FieldWorkerDashboard() {
-  const [activeNav, setActiveNav] = useState("dashboard");
   const [tasks, setTasks] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -97,14 +94,13 @@ export default function FieldWorkerDashboard() {
   ).length;
   const criticalCount = tasks.filter((t) => t.priority === "critical").length;
 
-  // "Completed today" = resolved within the last 24 hours
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const completedToday = tasks.filter(
     (t) => t.status === "resolved" && new Date(t.updated_at ?? t.created_at) >= today
   ).length;
 
-  // Only show active tasks (not resolved/cancelled) in the task list
+  // Only show active tasks in the task list
   const activeTasks = tasks.filter(
     (t) => t.status !== "resolved" && t.status !== "cancelled"
   );
@@ -112,7 +108,7 @@ export default function FieldWorkerDashboard() {
   return (
     <div className="min-h-screen bg-white flex font-sans">
       {/* Sidebar - Navigation panel on the left */}
-      <WorkerSidebar activeNav={activeNav} onNavClick={setActiveNav} />
+      <WorkerSidebar activeNav="dashboard" />
 
       {/* Main Panel Content Area */}
       <div className="flex-1 min-h-screen flex flex-col justify-between">
@@ -123,9 +119,15 @@ export default function FieldWorkerDashboard() {
           <WorkerHeader />
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <Loader2 className="w-10 h-10 text-[#005c55] animate-spin" />
-              <p className="text-slate-500 text-sm font-bold">Loading your tasks...</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-slate-50 border border-slate-100 rounded-3xl p-5 space-y-4 animate-pulse">
+                  <div className="w-full aspect-[4/3] bg-slate-200 rounded-2xl" />
+                  <div className="h-4 bg-slate-200 rounded-md w-3/4" />
+                  <div className="h-3 bg-slate-200 rounded-md w-1/2" />
+                  <div className="h-10 bg-slate-200 rounded-xl w-full" />
+                </div>
+              ))}
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
@@ -206,7 +208,7 @@ export default function FieldWorkerDashboard() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-black text-gray-900 tracking-tight">
-                      My Tasks
+                      My Tasks Summary
                     </h2>
                     <p className="text-gray-500 text-xs font-semibold mt-0.5">
                       {activeTasks.length > 0
@@ -235,7 +237,6 @@ export default function FieldWorkerDashboard() {
                     <p className="text-slate-400 text-xs">No active tasks assigned to you.</p>
                   </div>
                 ) : (
-                  /* Grid display of task cards */
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {activeTasks.map((task) => (
                       <WorkerTaskCard

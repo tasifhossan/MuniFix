@@ -19,11 +19,24 @@ export function middleware(request: NextRequest) {
 
   // Protected route prefixes
   const protectedPrefixes = ["/dashboard", "/complaints", "/reports", "/settings", "/admin", "/worker"];
+  console.log(`[Middleware] Path: ${pathname}, Token exists: ${!!token}`);
+  if (token) {
+    const decoded = parseJwt(token);
+    console.log(`[Middleware] Decoded role: ${decoded?.role}`);
+  }
   const isProtected = protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
 
-  // Not logged in → redirect to login
-  if (isProtected && !token) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Validate token existence on protected routes
+  if (isProtected) {
+    if (!token) {
+      console.log(`[Middleware] No token on protected route ${pathname}, redirecting to /login`);
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    const decoded = parseJwt(token);
+    if (!decoded || !decoded.role) {
+      console.log(`[Middleware] Invalid token on protected route ${pathname}, redirecting to /login`);
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
   }
 
   if (token) {
@@ -33,85 +46,41 @@ export function middleware(request: NextRequest) {
 
       // ─── CITIZEN ──────────────────────────────────────────────────────────
       if (role === "citizen") {
-        // Block access to admin and worker areas
         if (pathname.startsWith("/admin") || pathname.startsWith("/worker")) {
-          return NextResponse.redirect(new URL("/dashboard", request.url));
-        }
-        // Redirect from wrong role sub-paths → citizen home
-        if (
-          pathname === "/dashboard/admin" ||
-          pathname === "/dashboard/superadmin" ||
-          pathname === "/dashboard/worker"
-        ) {
           return NextResponse.redirect(new URL("/dashboard", request.url));
         }
       }
 
       // ─── FIELD WORKER ─────────────────────────────────────────────────────
       if (role === "field_worker") {
-        // Block access to admin areas
-        if (pathname.startsWith("/admin")) {
-          return NextResponse.redirect(new URL("/worker", request.url));
-        }
-        // /dashboard (generic) → send to worker dashboard
-        if (pathname === "/dashboard") {
-          return NextResponse.redirect(new URL("/worker", request.url));
-        }
-        // Wrong role sub-paths → worker home
-        if (
-          pathname === "/dashboard/citizen" ||
-          pathname === "/dashboard/admin" ||
-          pathname === "/dashboard/superadmin"
-        ) {
+        if (pathname.startsWith("/admin") || pathname.startsWith("/dashboard")) {
           return NextResponse.redirect(new URL("/worker", request.url));
         }
       }
 
       // ─── DEPT ADMIN ───────────────────────────────────────────────────────
       if (role === "dept_admin") {
-        // Block access to worker field pages
         if (pathname.startsWith("/worker")) {
           return NextResponse.redirect(new URL("/dashboard/admin", request.url));
         }
-        // Block access to super admin only subpages
         if (
-          pathname.startsWith("/admin/departments") ||
           pathname.startsWith("/admin/permissions") ||
           pathname.startsWith("/admin/users") ||
           pathname.startsWith("/admin/reports")
         ) {
           return NextResponse.redirect(new URL("/dashboard/admin", request.url));
         }
-        // /dashboard (generic) or raw /admin → send to admin dashboard
-        if (pathname === "/dashboard" || pathname === "/admin") {
-          return NextResponse.redirect(new URL("/dashboard/admin", request.url));
-        }
-        // Wrong role sub-paths → admin home
-        if (
-          pathname === "/dashboard/citizen" ||
-          pathname === "/dashboard/worker" ||
-          pathname === "/dashboard/superadmin"
-        ) {
+        if (pathname.startsWith("/dashboard") && !pathname.startsWith("/dashboard/admin")) {
           return NextResponse.redirect(new URL("/dashboard/admin", request.url));
         }
       }
 
       // ─── SUPER ADMIN ──────────────────────────────────────────────────────
       if (role === "super_admin") {
-        // Block access to worker field pages
         if (pathname.startsWith("/worker")) {
           return NextResponse.redirect(new URL("/dashboard/superadmin", request.url));
         }
-        // /dashboard (generic) or raw /admin or /superadmin → send to admin dashboard
-        if (pathname === "/dashboard" || pathname === "/admin" || pathname === "/superadmin") {
-          return NextResponse.redirect(new URL("/dashboard/superadmin", request.url));
-        }
-        // Wrong role sub-paths → admin home
-        if (
-          pathname === "/dashboard/citizen" ||
-          pathname === "/dashboard/worker" ||
-          pathname === "/dashboard/admin"
-        ) {
+        if (pathname.startsWith("/dashboard") && !pathname.startsWith("/dashboard/superadmin")) {
           return NextResponse.redirect(new URL("/dashboard/superadmin", request.url));
         }
       }

@@ -31,16 +31,19 @@ export default function WorkerSidebar({
 
   const currentActive = activeNav || (
     pathname === "/worker" ? "dashboard" :
-    pathname?.startsWith("/worker/profile") ? "profile" :
+    pathname === "/worker/complaints" ? "complaints" :
+    pathname === "/worker/reports" ? "reports" :
+    pathname === "/worker/profile" ? "profile" :
+    pathname === "/worker/settings" ? "settings" :
     pathname?.startsWith("/worker/tasks") ? "complaints" : ""
   );
-  
+
   const menuItems = [
     { id: "dashboard", label: "Dashboard", href: "/worker", icon: <LayoutDashboard className="w-4.5 h-4.5" /> },
-    { id: "complaints", label: "Complaints", href: "#", icon: <AlertTriangle className="w-4.5 h-4.5" /> },
-    { id: "reports", label: "Reports", href: "#", icon: <BarChart3 className="w-4.5 h-4.5" /> },
+    { id: "complaints", label: "Complaints", href: "/worker/complaints", icon: <AlertTriangle className="w-4.5 h-4.5" /> },
+    { id: "reports", label: "Reports", href: "/worker/reports", icon: <BarChart3 className="w-4.5 h-4.5" /> },
     { id: "profile", label: "Profile", href: "/worker/profile", icon: <User className="w-4.5 h-4.5" /> },
-    { id: "settings", label: "Settings", href: "#", icon: <Settings className="w-4.5 h-4.5" /> },
+    { id: "settings", label: "Settings", href: "/worker/settings", icon: <Settings className="w-4.5 h-4.5" /> },
   ];
 
   const handleNavClick = (id: string) => {
@@ -91,13 +94,9 @@ export default function WorkerSidebar({
             }
 
             return (
-              <Link key={item.id} href={item.href} className="block">
-                <button
-                  className={btnClass}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </button>
+              <Link key={item.id} href={item.href} className={btnClass}>
+                {item.icon}
+                <span>{item.label}</span>
               </Link>
             );
           })}
@@ -105,26 +104,25 @@ export default function WorkerSidebar({
 
         {/* Golden-Yellow New Report Button */}
         <div className="px-1 mt-auto pb-4 border-b border-slate-200/60">
-          <Link href="/complaints/new" className="w-full block">
-            <button className="w-full bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-md shadow-[#f59e0b]/10 hover:shadow-[#f59e0b]/20 select-none active:scale-[0.98] cursor-pointer text-xs">
-              <PlusCircle className="w-4.5 h-4.5 stroke-[2.2]" />
-              <span>New Report</span>
-            </button>
+          <Link href="/complaints/new" className="w-full bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-md shadow-[#f59e0b]/10 hover:shadow-[#f59e0b]/20 select-none active:scale-[0.98] cursor-pointer text-xs">
+            <PlusCircle className="w-4.5 h-4.5 stroke-[2.2]" />
+            <span>New Report</span>
           </Link>
         </div>
       </div>
 
       {/* Footer Navigation Elements */}
       <div className="space-y-1.5 pt-4">
-        <Link href="/help" className="block">
-          <button className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all select-none cursor-pointer ${
+        <Link 
+          href="/help" 
+          className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all select-none cursor-pointer ${
             pathname === "/help"
               ? "bg-brand-teal text-white shadow-md shadow-brand-teal/10"
               : "text-slate-500 hover:text-brand-teal hover:bg-slate-100/80"
-          }`}>
-            <HelpCircle className="w-4.5 h-4.5" />
-            <span>Help Center</span>
-          </button>
+          }`}
+        >
+          <HelpCircle className="w-4.5 h-4.5" />
+          <span>Help Center</span>
         </Link>
         
         <button 

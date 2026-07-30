@@ -59,10 +59,30 @@ export default function AdminSidebar({
     pathname?.includes("/admin/settings") ? "settings" : "dashboard"
   );
 
-  const { user, logout } = useAuth();
-  const effectiveRole = user?.role ? (user.role === "super_admin" ? "superadmin" : "admin") : role;
-  const isSuperAdmin = effectiveRole === "superadmin";
-  const dashboardHref = isSuperAdmin ? "/dashboard/superadmin" : "/dashboard/admin";
+  const { logout } = useAuth();
+  const [currentUser, setCurrentUser] = React.useState<any>(null);
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        try {
+          setCurrentUser(JSON.parse(stored));
+        } catch (e) {}
+      }
+    }
+  }, []);
+
+  if (!isMounted) return null;
+
+  if (!currentUser || (currentUser.role !== "dept_admin" && currentUser.role !== "super_admin")) {
+    return null;
+  }
+
+  const isSuperAdmin = currentUser.role === "super_admin";
+  const dashboardHref = "/admin";
 
   const baseItems = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className="w-5 h-5" />, href: dashboardHref },
@@ -86,8 +106,8 @@ export default function AdminSidebar({
       return false;
     }
 
-    // Automatically hide superadmin-only views from dept_admin
-    if (!isSuperAdmin && (item.id === "permissions" || item.id === "departments" || item.id === "reports")) {
+    // Automatically hide superadmin-only views from dept_admin (except departments which is view-only for dept_admin)
+    if (!isSuperAdmin && (item.id === "permissions" || item.id === "reports")) {
       return false;
     }
 
