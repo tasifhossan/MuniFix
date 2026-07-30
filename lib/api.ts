@@ -1,60 +1,3 @@
-export interface ActiveProfile {
-  id: string;
-  name: string;
-  role: 'citizen' | 'field_worker' | 'dept_admin' | 'super_admin';
-  email: string;
-  department_id?: number;
-}
-
-export const profiles: ActiveProfile[] = [
-  {
-    id: "f19d2bba-ea7f-4422-b5e1-55c3272e276b",
-    name: "John Citizen (Citizen)",
-    role: "citizen",
-    email: "john@gmail.com"
-  },
-  {
-    id: "a871cb2b-7c7f-4522-a9e1-66e3c3272e1d",
-    name: "Waste Admin (Dept Admin)",
-    role: "dept_admin",
-    email: "wasteadmin@munifix.gov",
-    department_id: 3
-  },
-  {
-    id: "e402bba2-da7f-4122-83e1-77d3c3272e2e",
-    name: "Roads Admin (Dept Admin)",
-    role: "dept_admin",
-    email: "roadsadmin@munifix.gov",
-    department_id: 2
-  },
-  {
-    id: "c59d9c2e-4b6b-4e12-87ad-d345ff4b10b0",
-    name: "Super Admin (Super Admin)",
-    role: "super_admin",
-    email: "admin@munifix.gov"
-  }
-];
-
-export function getActiveProfile(): ActiveProfile {
-  if (typeof window === "undefined") return profiles[0];
-  const stored = localStorage.getItem("munifix_active_profile");
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      const matched = profiles.find(p => p.id === parsed.id);
-      if (matched) return matched;
-    } catch (e) {}
-  }
-  return profiles[0];
-}
-
-export function setActiveProfile(profile: ActiveProfile) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("munifix_active_profile", JSON.stringify(profile));
-    window.dispatchEvent(new Event("munifix_profile_changed"));
-  }
-}
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export function getHeaders(): Record<string, string> {
@@ -102,10 +45,6 @@ export async function fetchComplaintById(id: string) {
 }
 
 export async function createComplaint(formData: FormData) {
-  const profile = getActiveProfile();
-  if (!formData.has("citizen_id")) {
-    formData.append("citizen_id", profile.id);
-  }
 
   const res = await fetch(`${API_BASE_URL}/complain`, {
     method: "POST",
