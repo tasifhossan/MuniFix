@@ -59,21 +59,30 @@ export default function AdminSidebar({
     pathname?.includes("/admin/settings") ? "settings" : "dashboard"
   );
 
-  const { logout } = useAuth();
+  const { logout, user: authUser } = useAuth();
   const [currentUser, setCurrentUser] = React.useState<any>(null);
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
     setIsMounted(true);
-    if (typeof window !== "undefined") {
+  }, []);
+
+  React.useEffect(() => {
+    if (authUser) {
+      setCurrentUser(authUser);
+    } else if (typeof window !== "undefined") {
       const stored = localStorage.getItem("user");
       if (stored) {
         try {
           setCurrentUser(JSON.parse(stored));
         } catch (e) {}
+      } else {
+        setCurrentUser(null);
       }
+    } else {
+      setCurrentUser(null);
     }
-  }, []);
+  }, [authUser]);
 
   if (!isMounted) return null;
 
