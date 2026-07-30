@@ -56,7 +56,7 @@ Citizens submit complaints with a photo, description, and geolocation. Google's 
 - Gemini API — AI categorization
 - Winston + Morgan — logging
 - express-rate-limit — rate limiting
-- Deployed on [Railway](https://railway.app)
+- Deployed on [Vercel](https://vercel.com)
 
 **Database**
 - PostgreSQL on [Neon](https://neon.tech) (serverless)
