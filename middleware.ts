@@ -44,6 +44,14 @@ export function middleware(request: NextRequest) {
     if (decoded && decoded.role) {
       const { role } = decoded;
 
+      // ─── REDIRECT LOGGED-IN USERS AWAY FROM THE LANDING PAGE ──────────────
+      if (pathname === "/") {
+        if (role === "citizen") return NextResponse.redirect(new URL("/dashboard", request.url));
+        if (role === "field_worker") return NextResponse.redirect(new URL("/worker", request.url));
+        if (role === "dept_admin") return NextResponse.redirect(new URL("/dashboard/admin", request.url));
+        if (role === "super_admin") return NextResponse.redirect(new URL("/dashboard/superadmin", request.url));
+      }
+
       // ─── CITIZEN ──────────────────────────────────────────────────────────
       if (role === "citizen") {
         if (pathname.startsWith("/admin") || pathname.startsWith("/worker")) {
@@ -92,6 +100,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/dashboard/:path*",
     "/complaints/:path*",
     "/reports/:path*",
