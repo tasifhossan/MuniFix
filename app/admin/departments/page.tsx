@@ -9,6 +9,8 @@ import DepartmentLoadBalance from "@/components/DepartmentLoadBalance";
 import OperationalGuidelines from "@/components/OperationalGuidelines";
 import { fetchDepartments, createDepartment, updateDepartment, deleteDepartment } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import DepartmentFormModal from "@/components/DepartmentFormModal";
+import ConfirmDeleteModal from "@/components/ConfirmDeleteModal";
 
 // Icon mapping helper based on department name
 function getIconType(name: string): "water" | "light" | "waste" | "road" {
@@ -81,48 +83,52 @@ export default function AdminDepartmentsPage() {
     loadDepartments();
   }, []);
 
+  // Form Modal state
+  const [formModalOpen, setFormModalOpen] = useState(false);
+  const [formModalTitle, setFormModalTitle] = useState("");
+  const [formInitialName, setFormInitialName] = useState("");
+  const [formInitialDescription, setFormInitialDescription] = useState("");
+  const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
+
+  // Delete Modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedDeleteDept, setSelectedDeleteDept] = useState<DepartmentItem | null>(null);
+
   // CRUD actions
-  const handleAddDepartment = async () => {
-    const name = prompt("Enter new department name:");
-    if (!name || name.trim() === "") return;
-    const description = prompt("Enter new department description (optional):") || "";
-    try {
-      setLoading(true);
+  const handleAddDepartment = () => {
+    setSelectedDeptId(null);
+    setFormInitialName("");
+    setFormInitialDescription("");
+    setFormModalTitle("Add New Department");
+    setFormModalOpen(true);
+  };
+
+  const handleEditDepartment = (item: DepartmentItem) => {
+    setSelectedDeptId(item.id);
+    setFormInitialName(item.name);
+    setFormInitialDescription(item.subtitle);
+    setFormModalTitle("Edit Department");
+    setFormModalOpen(true);
+  };
+
+  const handleDeleteDepartment = (item: DepartmentItem) => {
+    setSelectedDeleteDept(item);
+    setDeleteModalOpen(true);
+  };
+
+  const handleFormSubmit = async (name: string, description: string) => {
+    if (selectedDeptId) {
+      await updateDepartment(selectedDeptId, { name, description });
+    } else {
       await createDepartment({ name, description });
-      alert("New department registered successfully.");
-      loadDepartments();
-    } catch (err: any) {
-      alert("Failed to add department: " + err.message);
-      setLoading(false);
     }
+    loadDepartments();
   };
 
-  const handleEditDepartment = async (item: DepartmentItem) => {
-    const name = prompt("Enter updated department name:", item.name);
-    if (!name || name.trim() === "") return;
-    const description = prompt("Enter updated department description:", item.subtitle) || "";
-    try {
-      setLoading(true);
-      await updateDepartment(item.id, { name, description });
-      alert("Department updated successfully.");
+  const handleDeleteConfirm = async () => {
+    if (selectedDeleteDept) {
+      await deleteDepartment(selectedDeleteDept.id);
       loadDepartments();
-    } catch (err: any) {
-      alert("Failed to edit department: " + err.message);
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteDepartment = async (item: DepartmentItem) => {
-    if (confirm(`Are you sure you want to delete department: ${item.name}?`)) {
-      try {
-        setLoading(true);
-        await deleteDepartment(item.id);
-        alert("Department deleted successfully.");
-        loadDepartments();
-      } catch (err: any) {
-        alert("Failed to delete department: " + err.message);
-        setLoading(false);
-      }
     }
   };
 
@@ -287,6 +293,33 @@ export default function AdminDepartmentsPage() {
           </span>
         </footer>
       </div>
+
+      {/* Form Modal */}
+      <DepartmentFormModal
+        isOpen={formModalOpen}
+        onClose={() => setFormModalOpen(false)}
+        onSubmit={handleFormSubmit}
+        initialName={formInitialName}
+        initialDescription={formInitialDescription}
+        title={formModalTitle}
+      />
+
+      {/* Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setSelectedDeleteDept(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Department"
+        itemName={selectedDeleteDept?.name || ""}
+        warningMessage={
+          selectedDeleteDept && selectedDeleteDept.activeComplaints > 0
+            ? `Warning: This department has ${selectedDeleteDept.activeComplaints} active complaints associated with it.`
+            : undefined
+        }
+      />
     </div>
   );
 }
