@@ -73,7 +73,7 @@ export default function NotificationDropdown({
   return (
     <div 
       ref={dropdownRef}
-      className="absolute right-0 mt-3 w-80 sm:w-[340px] bg-white border border-slate-200/60 rounded-3xl shadow-xl z-50 p-4 transition-all animate-scale-up font-sans"
+      className="absolute right-0 top-full mt-2 w-80 sm:w-[340px] bg-white border border-slate-200/60 rounded-3xl shadow-xl z-[999] p-4 transition-all animate-scale-up font-sans"
     >
       {/* Header */}
       <div className="flex justify-between items-center pb-3 border-b border-slate-100 select-none">

@@ -11,6 +11,7 @@ interface ProfileSummaryCardProps {
   resolvedCount: number;
   points: number;
   level: number;
+  onAvatarChange?: (file: File) => void;
 }
 
 export default function ProfileSummaryCard({
@@ -21,6 +22,7 @@ export default function ProfileSummaryCard({
   resolvedCount,
   points,
   level,
+  onAvatarChange,
 }: ProfileSummaryCardProps) {
   // Calculate progress percentage for current level (just a mock logic e.g., points % 1000 / 10)
   const levelProgress = 65; // hardcoded or calculated
@@ -30,7 +32,12 @@ export default function ProfileSummaryCard({
       {/* Avatar Wrapper with double rings */}
       <div className="relative group mb-4">
         <div className="absolute inset-0 bg-brand-teal/10 rounded-full scale-105 animate-pulse group-hover:scale-110 transition-transform duration-300" />
-        <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-brand-teal p-1 bg-white shadow-inner select-none">
+        <label 
+          htmlFor="avatar-file-input" 
+          className={`relative w-28 h-28 rounded-full overflow-hidden border-4 border-brand-teal p-1 bg-white shadow-inner select-none block group ${
+            onAvatarChange ? "cursor-pointer" : ""
+          }`}
+        >
           <img
             src={avatar}
             alt={name}
@@ -40,7 +47,25 @@ export default function ProfileSummaryCard({
               e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=005c55`;
             }}
           />
-        </div>
+          {onAvatarChange && (
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full">
+              <span className="text-[10px] text-white font-extrabold tracking-wider uppercase">Change</span>
+            </div>
+          )}
+        </label>
+        {onAvatarChange && (
+          <input
+            type="file"
+            id="avatar-file-input"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                onAvatarChange(e.target.files[0]);
+              }
+            }}
+          />
+        )}
       </div>
 
       {/* Name and Status */}

@@ -11,7 +11,7 @@ import ComplaintCard from "@/components/ComplaintCard";
 import EmergencyCallout from "@/components/EmergencyCallout";
 import Pagination from "@/components/Pagination";
 import { Complaint } from "@/lib/mockData";
-import { searchComplaints } from "@/lib/api";
+import { searchComplaints, createComplaint } from "@/lib/api";
 
 export default function ComplaintsPage() {
   const router = useRouter();
@@ -38,6 +38,10 @@ export default function ComplaintsPage() {
   // Emergency Modal state
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [emergencySubmitted, setEmergencySubmitted] = useState(false);
+  const [emergencyLocation, setEmergencyLocation] = useState("");
+  const [emergencyDescription, setEmergencyDescription] = useState("");
+  const [isEmergencySubmitting, setIsEmergencySubmitting] = useState(false);
+  const [emergencyError, setEmergencyError] = useState<string | null>(null);
 
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -364,16 +368,41 @@ export default function ComplaintsPage() {
             >
               <X className="w-6 h-6" />
             </button>
-
             {!emergencySubmitted ? (
               <form
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
-                  setEmergencySubmitted(true);
+                  if (!emergencyLocation.trim() || !emergencyDescription.trim()) return;
+                  try {
+                    setIsEmergencySubmitting(true);
+                    setEmergencyError(null);
+
+                    const fd = new FormData();
+                    fd.append("description", `[EMERGENCY] ${emergencyDescription.trim()}`);
+                    fd.append("latitude", "22.3569");
+                    fd.append("longitude", "91.8123");
+                    fd.append("is_emergency", "true");
+                    fd.append("category", "Other"); // default category
+                    fd.append("priority", "critical"); // default priority
+                    fd.append("locationInput", emergencyLocation.trim());
+
+                    const res = await createComplaint(fd);
+                    if (res.success) {
+                      setEmergencySubmitted(true);
+                      setEmergencyLocation("");
+                      setEmergencyDescription("");
+                    } else {
+                      setEmergencyError(res.message || "Failed to dispatch emergency response");
+                    }
+                  } catch (err: any) {
+                    setEmergencyError(err.message || "An error occurred while sending the emergency dispatch.");
+                  } finally {
+                    setIsEmergencySubmitting(false);
+                  }
                 }}
                 className="space-y-6"
               >
-                <div className="flex items-center space-x-3 text-red-600">
+                <div className="flex items-center space-x-3 text-red-650">
                   <div className="p-2 bg-red-50 rounded-xl">
                     <AlertTriangle className="w-6 h-6 stroke-[2.5]" />
                   </div>
@@ -386,7 +415,13 @@ export default function ComplaintsPage() {
                   For immediate hazards (flooding, electrical risk, collapsing structures). MuniFix special response teams will be dispatched in 2 hours.
                 </p>
 
-                <div className="space-y-4">
+                {emergencyError && (
+                  <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-xs font-semibold text-red-655 text-left">
+                    {emergencyError}
+                  </div>
+                )}
+
+                <div className="space-y-4 text-left">
                   <div>
                     <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-2">
                       Location / Ward
@@ -394,8 +429,11 @@ export default function ComplaintsPage() {
                     <input
                       required
                       type="text"
+                      disabled={isEmergencySubmitting}
+                      value={emergencyLocation}
+                      onChange={(e) => setEmergencyLocation(e.target.value)}
                       placeholder="e.g. GEC Circle intersection, Ward 15"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-brand-teal text-sm"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-brand-teal text-sm bg-white"
                     />
                   </div>
 
@@ -406,8 +444,11 @@ export default function ComplaintsPage() {
                     <textarea
                       required
                       rows={3}
+                      disabled={isEmergencySubmitting}
+                      value={emergencyDescription}
+                      onChange={(e) => setEmergencyDescription(e.target.value)}
                       placeholder="Explain the hazard in detail..."
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-brand-teal text-sm resize-none"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-brand-teal text-sm resize-none bg-white"
                     />
                   </div>
                 </div>
@@ -415,16 +456,28 @@ export default function ComplaintsPage() {
                 <div className="flex items-center gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => setShowEmergencyModal(false)}
-                    className="flex-1 py-3.5 text-sm font-semibold border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl transition-colors"
+                    disabled={isEmergencySubmitting}
+                    onClick={() => {
+                      setEmergencyError(null);
+                      setShowEmergencyModal(false);
+                    }}
+                    className="flex-1 py-3.5 text-sm font-semibold border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-3.5 text-sm font-bold bg-brand-orange hover:bg-brand-orange-hover text-white rounded-xl shadow-lg shadow-brand-orange/10 hover:shadow-brand-orange/20 transition-colors"
+                    disabled={isEmergencySubmitting}
+                    className="flex-1 py-3.5 text-sm font-bold bg-brand-orange hover:bg-brand-orange-hover text-white rounded-xl shadow-lg shadow-brand-orange/10 hover:shadow-brand-orange/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-80 disabled:cursor-not-allowed"
                   >
-                    Dispatch Team
+                    {isEmergencySubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Dispatching...</span>
+                      </>
+                    ) : (
+                      <span>Dispatch Team</span>
+                    )}
                   </button>
                 </div>
               </form>
@@ -442,7 +495,10 @@ export default function ComplaintsPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setShowEmergencyModal(false)}
+                  onClick={() => {
+                    setEmergencySubmitted(false);
+                    setShowEmergencyModal(false);
+                  }}
                   className="w-full bg-brand-teal hover:bg-brand-teal-hover text-white text-sm font-bold py-3.5 rounded-xl shadow-md transition-colors"
                 >
                   Return to Dashboard

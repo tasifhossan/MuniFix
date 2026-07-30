@@ -207,6 +207,22 @@ export async function updateMyProfile(payload: { name: string; phone?: string })
   return res.json();
 }
 
+export async function uploadMyAvatar(formData: FormData) {
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/my/avatar`, {
+    method: "POST",
+    headers: {
+      ...headers,
+    },
+    body: formData,
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to upload avatar");
+  }
+  return res.json();
+}
+
 export async function changeMyPassword(payload: { currentPassword: string; newPassword: string }) {
   const headers = getHeaders();
   const res = await fetch(`${API_BASE_URL}/my/password`, {
