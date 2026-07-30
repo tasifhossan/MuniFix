@@ -57,7 +57,7 @@ export default function WorkerSettingsPage() {
     setUpdatingPassword(true);
     try {
       const token = localStorage.getItem('token');
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
       const res = await fetch(`${API_BASE_URL}/my/password`, {
         method: "PATCH",
         headers: {
