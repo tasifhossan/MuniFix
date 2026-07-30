@@ -203,7 +203,15 @@ export default function AdminComplaintsPage() {
   const handleStatusChange = async (id: string, newStatus: string) => {
     let dbStatus = newStatus.toLowerCase();
     if (dbStatus === "in progress") dbStatus = "in_progress";
-    if (dbStatus === "under review") dbStatus = "pending"; // backend maps under review back to pending or is status pending? Let's check status_enum: pending, assigned, in_progress, resolved, cancelled.
+    if (dbStatus === "under review") dbStatus = "pending"; // backend maps under review back to pending
+
+    if (dbStatus === "assigned") {
+      const complaintItem = complaints.find((c) => c.id === id);
+      if (complaintItem) {
+        setSelectedAssignComplaint(complaintItem);
+      }
+      return;
+    }
 
     try {
       await updateComplaintStatus(id, { status: dbStatus });

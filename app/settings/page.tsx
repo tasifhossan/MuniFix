@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import DashboardFooter from "@/components/DashboardFooter";
 import LoadingScreen from "@/components/LoadingScreen";
-import { fetchMyProfile, updateMyProfile, changeMyPassword } from "@/lib/api";
+import { fetchMyProfile, updateMyProfile, changeMyPassword, uploadMyAvatar } from "@/lib/api";
 
 // Import custom reusable components
 import ProfileSummaryCard from "@/components/ProfileSummaryCard";
@@ -20,6 +20,7 @@ export interface UserProfile {
   mobileNumber: string;
   nidCard: string;
   primaryAddress: string;
+  avatarUrl?: string;
 }
 
 export default function SettingsPage() {
@@ -59,6 +60,7 @@ export default function SettingsPage() {
         mobileNumber: p.phone || "",
         nidCard: p.nid || "N/A",
         primaryAddress: p.address || "No primary address registered.",
+        avatarUrl: p.avatar_url || undefined,
       };
       
       setProfile(userProfileData);
@@ -100,6 +102,7 @@ export default function SettingsPage() {
         mobileNumber: p.phone || "",
         nidCard: p.nid || "N/A",
         primaryAddress: p.address || "No primary address registered.",
+        avatarUrl: p.avatar_url || undefined,
       };
       
       setProfile(savedProfile);
@@ -111,6 +114,20 @@ export default function SettingsPage() {
       throw err;
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  const handleAvatarChange = async (file: File) => {
+    try {
+      const fd = new FormData();
+      fd.append("avatar", file);
+      const res = await uploadMyAvatar(fd);
+      if (res.success) {
+        triggerToast("Avatar updated successfully!", "success");
+        loadProfile();
+      }
+    } catch (err: any) {
+      triggerToast(err.message || "Failed to upload avatar", "error");
     }
   };
 
@@ -172,7 +189,7 @@ export default function SettingsPage() {
 
   const headerUser = {
     name: profile?.fullName || "Citizen User",
-    avatar: "/ahmed-avatar.png",
+    avatar: profile?.avatarUrl || "/ahmed-avatar.png",
   };
 
   return (
@@ -209,7 +226,8 @@ export default function SettingsPage() {
             <div className="lg:col-span-1 space-y-6">
               <ProfileSummaryCard
                 name={profile?.fullName || "Citizen User"}
-                avatar="/ahmed-avatar.png"
+                avatar={profile?.avatarUrl || "/ahmed-avatar.png"}
+                onAvatarChange={handleAvatarChange}
                 verified={true}
                 filedCount={12}
                 resolvedCount={9}
