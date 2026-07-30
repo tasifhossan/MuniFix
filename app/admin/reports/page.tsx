@@ -206,7 +206,7 @@ export default function SystemActivityLogPage() {
         setError(null);
       }
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("munifix_authtoken");
         const res = await fetch(`${API_BASE}/logs?${buildQueryString(page)}`, {
           headers: {
             Authorization: `Bearer ${token}`,

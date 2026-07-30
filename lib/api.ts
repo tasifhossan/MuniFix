@@ -2,7 +2,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export function getHeaders(): Record<string, string> {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("token") || localStorage.getItem("munifix_authtoken");
+    const token = localStorage.getItem("munifix_authtoken");
     if (token) {
       return {
         "Authorization": `Bearer ${token}`

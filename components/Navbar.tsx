@@ -83,7 +83,7 @@ export default function Navbar({
   };
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? (localStorage.getItem("token") || localStorage.getItem("munifix_authtoken")) : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("munifix_authtoken") : null;
     if (token) {
       loadNotifications();
     }

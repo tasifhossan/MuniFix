@@ -56,7 +56,7 @@ export default function WorkerSettingsPage() {
 
     setUpdatingPassword(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("munifix_authtoken");
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
       const res = await fetch(`${API_BASE_URL}/my/password`, {
         method: "PATCH",
