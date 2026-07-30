@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createComplaint } from "@/lib/api";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import LiveAIAnalysis from "@/components/LiveAIAnalysis";
 import ReportingGuidelines from "@/components/ReportingGuidelines";
 import SuccessModal from "@/components/SuccessModal";
 import dynamic from "next/dynamic";
+import { useAuth } from "@/contexts/AuthContext";
 
 const InteractiveMap = dynamic(() => import("@/components/InteractiveMap"), {
   ssr: false,
@@ -23,6 +24,14 @@ const InteractiveMap = dynamic(() => import("@/components/InteractiveMap"), {
 
 export default function NewComplaintPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [user, authLoading, router]);
+
   const [description, setDescription] = useState("");
   const [locationInput, setLocationInput] = useState("");
   const [isLocating, setIsLocating] = useState(false);
@@ -165,6 +174,18 @@ export default function NewComplaintPage() {
     setDetectedArea("Chattogram, Bangladesh");
     setIsSubmitted(false);
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50 font-sans justify-center items-center">
+        <p className="text-gray-400 text-sm font-bold">Checking authentication status...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Let the useEffect redirect to login
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
