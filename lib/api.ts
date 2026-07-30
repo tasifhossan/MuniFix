@@ -283,7 +283,7 @@ export async function updateUserRole(userId: string, payload: { role: string; de
 
 export async function updateUserStatus(userId: string, isActive: boolean) {
   const headers = getHeaders();
-  const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
+  const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/status`, {
     method: "PATCH",
     headers: {
       ...headers,
