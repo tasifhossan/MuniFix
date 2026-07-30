@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Load and hydrate session on mount
   useEffect(() => {
     async function hydrateAuth() {
-      const storedToken = localStorage.getItem("token") || localStorage.getItem("munifix_authtoken");
+      const storedToken = localStorage.getItem("munifix_authtoken");
       const storedRefresh = localStorage.getItem("munifix_refresh_token");
 
       if (storedToken) {
@@ -70,7 +70,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               try {
                 const refreshed = await refreshAuthToken(storedRefresh);
                 const newAccessToken = refreshed.authtoken;
-                localStorage.setItem("token", newAccessToken);
                 localStorage.setItem("munifix_authtoken", newAccessToken);
                 setAuthtoken(newAccessToken);
                 setAuthCookie(newAccessToken);
@@ -91,7 +90,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               } catch (refreshErr) {
                 console.error("Token refresh failed:", refreshErr);
                 // Clear state
-                localStorage.removeItem("token");
                 localStorage.removeItem("user");
                 localStorage.removeItem("munifix_authtoken");
                 localStorage.removeItem("munifix_refresh_token");
@@ -101,7 +99,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             } else {
               // Clear state
-              localStorage.removeItem("token");
               localStorage.removeItem("user");
               localStorage.removeItem("munifix_authtoken");
               clearAuthCookie();
@@ -124,7 +121,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = response.authtoken;
       const refresh = response.refreshToken;
 
-      localStorage.setItem("token", token);
       localStorage.setItem("munifix_authtoken", token);
       localStorage.setItem("munifix_refresh_token", refresh);
       setAuthCookie(token);
@@ -165,7 +161,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       setUser(null);
       setAuthtoken(null);
-      localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("munifix_authtoken");
       localStorage.removeItem("munifix_refresh_token");
@@ -191,14 +186,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Always clear local storage & cookies even if the API request failed
-    localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("munifix_authtoken");
     localStorage.removeItem("munifix_refresh_token");
     clearAuthCookie();
     setUser(null);
     setAuthtoken(null);
-    window.location.replace("/login");
+    router.replace("/login");
   };
 
   return (

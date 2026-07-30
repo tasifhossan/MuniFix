@@ -139,7 +139,7 @@ export default function ComplaintDetailsPage() {
     setIsOverriding(true);
     setOverrideError(null);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("munifix_authtoken");
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/complain/${id}/category`,
         {
