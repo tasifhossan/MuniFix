@@ -18,9 +18,11 @@ interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
   authtoken: string | null;
+  error: string | null;
   login: (email: string, password: string) => Promise<string>;
   register: (payload: any) => Promise<any>;
   logout: () => Promise<void>;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authtoken, setAuthtoken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // Load and hydrate session on mount
@@ -41,18 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAuthtoken(storedToken);
         const decoded = parseJwt(storedToken);
         if (decoded) {
-          // Initialize state with decoded token values before profile loads
-          const initialUser = {
-            id: decoded.id,
-            email: decoded.email,
-            role: decoded.role,
-            name: "", // temporary
-          };
-          setUser(initialUser);
-          localStorage.setItem("user", JSON.stringify(initialUser));
-
           try {
-            // Fetch the full profile (including name and department_id)
+            // Fetch the full profile without setting a partial empty name state first
             const profile = await fetchMyProfile(storedToken);
             const fullUser = {
               id: decoded.id,
@@ -64,8 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(fullUser);
             localStorage.setItem("user", JSON.stringify(fullUser));
             setAuthCookie(storedToken); // Refresh cookie lifecycle
-          } catch (error) {
-            console.error("Hydration profile fetch failed, trying to refresh token:", error);
+            setError(null);
+          } catch (profileErr) {
+            console.error("Hydration profile fetch failed, trying to refresh token:", profileErr);
             if (storedRefresh) {
               try {
                 const refreshed = await refreshAuthToken(storedRefresh);
@@ -86,24 +80,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   };
                   setUser(fullUser);
                   localStorage.setItem("user", JSON.stringify(fullUser));
+                  setError(null);
                 }
               } catch (refreshErr) {
                 console.error("Token refresh failed:", refreshErr);
-                // Clear state
+                // Option B: Clear auth state entirely and redirect to /login with error
                 localStorage.removeItem("user");
                 localStorage.removeItem("munifix_authtoken");
                 localStorage.removeItem("munifix_refresh_token");
                 clearAuthCookie();
                 setUser(null);
                 setAuthtoken(null);
+                setError("We couldn't load your profile — please log in again.");
+                router.replace("/login");
               }
             } else {
-              // Clear state
+              // Option B: Clear auth state entirely and redirect to /login with error
               localStorage.removeItem("user");
               localStorage.removeItem("munifix_authtoken");
               clearAuthCookie();
               setUser(null);
               setAuthtoken(null);
+              setError("We couldn't load your profile — please log in again.");
+              router.replace("/login");
             }
           }
         }
@@ -116,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<string> => {
     setLoading(true);
+    setError(null);
     try {
       const response = await signIn(email, password);
       const token = response.authtoken;
@@ -131,31 +131,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Invalid JWT token received from server");
       }
 
-      // Set user with decoded values immediately
-      const initialUser = {
+      // Option A: Try loading the full profile. Retry once after 1s delay on transient failure.
+      let profile;
+      try {
+        profile = await fetchMyProfile(token);
+      } catch (err) {
+        console.warn("Fetch profile failed after login, retrying once in 1s...", err);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        try {
+          profile = await fetchMyProfile(token);
+        } catch (retryErr: any) {
+          console.error("Second profile fetch attempt failed after login:", retryErr);
+          setError("We couldn't load your profile — please log in again.");
+          setUser(null);
+          setAuthtoken(null);
+          localStorage.removeItem("user");
+          localStorage.removeItem("munifix_authtoken");
+          localStorage.removeItem("munifix_refresh_token");
+          clearAuthCookie();
+          throw new Error("We couldn't load your profile — please log in again.");
+        }
+      }
+
+      const fullUser = {
         id: decoded.id,
         email: decoded.email,
         role: decoded.role,
-        name: "",
+        name: profile.name,
+        department_id: profile.department_id,
       };
-      setUser(initialUser);
-      localStorage.setItem("user", JSON.stringify(initialUser));
-
-      // Now fetch full profile to retrieve the user's name
-      try {
-        const profile = await fetchMyProfile(token);
-        const fullUser = {
-          id: decoded.id,
-          email: decoded.email,
-          role: decoded.role,
-          name: profile.name,
-          department_id: profile.department_id,
-        };
-        setUser(fullUser);
-        localStorage.setItem("user", JSON.stringify(fullUser));
-      } catch (err) {
-        console.error("Fetch profile failed after login:", err);
-      }
+      setUser(fullUser);
+      localStorage.setItem("user", JSON.stringify(fullUser));
+      setError(null);
 
       return decoded.role;
     } catch (error) {
@@ -192,11 +199,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearAuthCookie();
     setUser(null);
     setAuthtoken(null);
+    setError(null);
     router.replace("/login");
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, authtoken, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, authtoken, error, login, register, logout, setError }}>
       {children}
     </AuthContext.Provider>
   );

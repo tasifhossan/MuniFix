@@ -15,7 +15,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, error: authError, setError: setAuthError } = useAuth();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -28,6 +28,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+      setAuthError(null);
+    }
+  }, [authError, setAuthError]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
