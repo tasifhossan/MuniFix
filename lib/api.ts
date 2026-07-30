@@ -427,3 +427,22 @@ export async function assignComplaint(id: string, payload: { worker_id: string }
   }
   return res.json();
 }
+
+export async function fetchActivityLogs(filters: { action?: string; startDate?: string; endDate?: string; page?: number; limit?: number } = {}) {
+  const params = new URLSearchParams();
+  if (filters.page) params.append("page", String(filters.page));
+  if (filters.limit) params.append("limit", String(filters.limit));
+  if (filters.action) params.append("action", filters.action);
+  if (filters.startDate) params.append("startDate", filters.startDate);
+  if (filters.endDate) params.append("endDate", filters.endDate);
+
+  const res = await fetch(`${API_BASE_URL}/logs?${params.toString()}`, {
+    method: "GET",
+    headers: getHeaders()
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch activity logs");
+  }
+  return res.json();
+}
