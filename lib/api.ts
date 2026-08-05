@@ -446,3 +446,128 @@ export async function fetchActivityLogs(filters: { action?: string; startDate?: 
   }
   return res.json();
 }
+
+export interface VoteResponse {
+  success?: boolean;
+  upvote_count?: number;
+  downvote_count?: number;
+  user_vote?: 1 | -1 | null;
+  message?: string;
+}
+
+export interface Comment {
+  id: string;
+  complaint_id: string;
+  content: string;
+  image_url?: string | null;
+  created_at: string;
+  author_id: string;
+  author_name: string;
+  author_role: string;
+}
+
+export interface CommentsFetchResponse {
+  success?: boolean;
+  count?: number;
+  data?: Comment[];
+  comments?: Comment[];
+}
+
+const getAuthHeaders = (): Record<string, string> => {
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("munifix_authtoken") || localStorage.getItem("token")
+      : null;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({} as Record<string, unknown>));
+    const errorMessage =
+      typeof errorData.message === "string"
+        ? errorData.message
+        : `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+  return response.json() as Promise<T>;
+}
+
+// --- Voting Service ---
+export const toggleVote = async (
+  complaintId: string,
+  voteType: "upvote" | "downvote"
+): Promise<VoteResponse> => {
+  const numericVoteType = voteType === "upvote" ? 1 : -1;
+
+  const response = await fetch(`${API_BASE_URL}/complain/${complaintId}/vote`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ vote_type: numericVoteType }),
+    credentials: "include",
+  });
+  return handleResponse<VoteResponse>(response);
+};
+
+// --- Comment Service ---
+export const getComments = async (
+  complaintId: string
+): Promise<CommentsFetchResponse> => {
+  const response = await fetch(`${API_BASE_URL}/complain/${complaintId}/comments`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+    credentials: "include",
+  });
+  return handleResponse<CommentsFetchResponse>(response);
+};
+
+export const addComment = async (
+  complaintId: string,
+  content: string,
+  imageFile?: File | null
+): Promise<{ success: boolean; data: Comment }> => {
+  const headers = getAuthHeaders();
+  let body: BodyInit;
+
+  if (imageFile) {
+    const formData = new FormData();
+    formData.append("content", content);
+    formData.append("image", imageFile);
+    delete headers["Content-Type"];
+    body = formData;
+  } else {
+    body = JSON.stringify({ content });
+  }
+
+  const response = await fetch(`${API_BASE_URL}/complain/${complaintId}/comments`, {
+    method: "POST",
+    headers,
+    body,
+    credentials: "include",
+  });
+  return handleResponse<{ success: boolean; data: Comment }>(response);
+};
+
+export const deleteComment = async (
+  complaintId: string,
+  commentId: string
+): Promise<{ success: boolean; message?: string }> => {
+  const response = await fetch(
+    `${API_BASE_URL}/complain/comments/${commentId}`,
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+      credentials: "include",
+    }
+  );
+  return handleResponse<{ success: boolean; message?: string }>(response);
+};

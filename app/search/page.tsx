@@ -73,7 +73,9 @@ export default function SearchPage() {
             category: c.category,
             date: c.created_at,
             reporter: c.citizen_name,
-            upvotes: c.upvotes || 0,
+            upvotes: c.upvote_count || 0,
+            downvotes: c.downvote_count || 0,
+            commentsCount: c.comment_count || 0,
             original: c
           }));
           setComplaints(mapped);
