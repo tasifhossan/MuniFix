@@ -9,11 +9,17 @@ interface CommentSectionProps {
   complaintId: string;
 }
 
+interface InteractiveComment extends Comment {
+  upvotes: number;
+  downvotes: number;
+  userVote: "upvote" | "downvote" | null;
+}
+
 export default function CommentSection({ complaintId }: CommentSectionProps) {
   const { user } = useAuth();
   const currentUserId = user?.id;
 
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<InteractiveComment[]>([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -36,15 +42,31 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
     try {
       setLoading(true);
       const data = await getComments(complaintId);
+      let rawComments: Comment[] = [];
       if (data && Array.isArray(data.data)) {
-        setComments(data.data);
+        rawComments = data.data;
       } else if (Array.isArray(data)) {
-        setComments(data);
+        rawComments = data;
       } else if (data && Array.isArray(data.comments)) {
-        setComments(data.comments);
+        rawComments = data.comments;
       } else {
-        setComments([]);
+        rawComments = [];
       }
+
+      const mapped: InteractiveComment[] = rawComments.map((c) => {
+        // Seed mock upvotes/downvotes deterministically using the comment id
+        const commentIdString = c.id ? String(c.id) : "";
+        const seed = commentIdString.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const upvotes = (seed % 6); // 0 to 5 upvotes
+        const downvotes = (seed % 2); // 0 to 1 downvotes
+        return {
+          ...c,
+          upvotes,
+          downvotes,
+          userVote: null,
+        };
+      });
+      setComments(mapped);
     } catch (err) {
       console.error("Error loading comments:", err);
     } finally {
@@ -82,11 +104,14 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
       const res = await addComment(complaintId, text.trim(), selectedImage);
       if (res && res.success && res.data) {
         // Hydrate details that the insert query RETURNING statement lacks
-        const newCommentObj = {
+        const newCommentObj: InteractiveComment = {
           ...res.data,
           author_id: user?.id || "",
           author_name: user?.name || "Citizen",
           author_role: user?.role || "citizen",
+          upvotes: 0,
+          downvotes: 0,
+          userVote: null,
         };
         setComments((prev) => [newCommentObj, ...prev]);
         setText("");
@@ -107,6 +132,56 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
       console.error("Failed to delete comment:", err);
     }
   };
+
+  const handleVote = (commentId: string, type: "upvote" | "downvote") => {
+    setComments((prevComments) =>
+      prevComments.map((comment) => {
+        if (comment.id !== commentId) return comment;
+
+        const currentVote = comment.userVote;
+        let newVote: "upvote" | "downvote" | null = currentVote === type ? null : type;
+        let newUpvotes = comment.upvotes;
+        let newDownvotes = comment.downvotes;
+
+        if (type === "upvote") {
+          if (currentVote === "upvote") {
+            newUpvotes = Math.max(0, newUpvotes - 1);
+          } else {
+            newUpvotes += 1;
+            if (currentVote === "downvote") {
+              newDownvotes = Math.max(0, newDownvotes - 1);
+            }
+          }
+        } else {
+          if (currentVote === "downvote") {
+            newDownvotes = Math.max(0, newDownvotes - 1);
+          } else {
+            newDownvotes += 1;
+            if (currentVote === "upvote") {
+              newUpvotes = Math.max(0, newUpvotes - 1);
+            }
+          }
+        }
+
+        return {
+          ...comment,
+          upvotes: newUpvotes,
+          downvotes: newDownvotes,
+          userVote: newVote,
+        };
+      })
+    );
+  };
+
+  // Sort comments: top score (upvotes - downvotes) first, fall back to created_at descending
+  const sortedComments = [...comments].sort((a, b) => {
+    const scoreA = a.upvotes - a.downvotes;
+    const scoreB = b.upvotes - b.downvotes;
+    if (scoreB !== scoreA) {
+      return scoreB - scoreA;
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   return (
     <div className="pt-6 border-t border-gray-150 space-y-4">
@@ -183,13 +258,16 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
         </div>
       ) : (
         <div className="space-y-2.5">
-          {comments.map((comment) => {
+          {sortedComments.map((comment, index) => {
             const commentId = comment.id;
             const authorName = comment.author_name || "Citizen";
             const authorId = comment.author_id;
             const commentText = comment.content || "";
             const createdAt = comment.created_at || new Date().toISOString();
             
+            // Highlight the comment with the highest score if that score is positive (> 0)
+            const isMostHelpful = index === 0 && (comment.upvotes - comment.downvotes) > 0;
+
             // Check delete authorization (Author or Admin)
             const canDelete =
               currentUserId &&
@@ -200,17 +278,30 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
             return (
               <div
                 key={commentId}
-                className="p-3.5 bg-white rounded-2xl border border-gray-150 shadow-2xs flex justify-between items-start gap-3"
+                className={`p-3.5 rounded-2xl border flex justify-between items-start gap-3 transition-all ${
+                  isMostHelpful
+                    ? "bg-gradient-to-br from-emerald-50/20 via-white to-white border-emerald-200 shadow-xs ring-1 ring-emerald-500/5"
+                    : "bg-white border-gray-150 shadow-2xs"
+                }`}
               >
                 <div className="space-y-1 flex-1">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 text-[9px] font-black flex items-center justify-center border border-gray-200 uppercase">
-                      {authorName[0]}
+                  <div className="flex items-center flex-wrap gap-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 text-[9px] font-black flex items-center justify-center border border-gray-200 uppercase">
+                        {authorName[0]}
+                      </div>
+                      <span className="text-xs font-bold text-gray-900">{authorName}</span>
                     </div>
-                    <span className="text-xs font-bold text-gray-900">{authorName}</span>
+                    
                     <span className="text-[10px] font-semibold text-gray-400">
                       • {new Date(createdAt).toLocaleDateString()}
                     </span>
+
+                    {isMostHelpful && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-tight">
+                        🏆 Most Helpful
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-600 font-semibold leading-relaxed pl-7">
                     {commentText}
@@ -227,23 +318,38 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
                     </div>
                   )}
 
-                  {/* Non-functional Upvote & Downvote Buttons for comments */}
-                  <div className="flex items-center gap-3 pl-7 pt-2 text-[10px] font-bold text-gray-400">
+                  {/* Interactive Upvote & Downvote Buttons for comments */}
+                  <div className="flex items-center gap-2 pl-7 pt-2 text-[10px] font-bold">
                     <button
                       type="button"
-                      className="flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer"
+                      onClick={() => handleVote(commentId, "upvote")}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg border transition-all cursor-pointer ${
+                        comment.userVote === "upvote"
+                          ? "text-emerald-600 bg-emerald-50 border-emerald-200 font-bold"
+                          : "text-gray-400 hover:text-emerald-600 border-transparent hover:bg-slate-50"
+                      }`}
                       title="Upvote comment"
                     >
-                      <ThumbsUp className="w-3 h-3 text-slate-400 hover:text-emerald-500" />
-                      <span>Helpful (0)</span>
+                      <ThumbsUp className={`w-3 h-3 transition-transform active:-translate-y-0.5 ${
+                        comment.userVote === "upvote" ? "fill-emerald-500 text-emerald-600" : ""
+                      }`} />
+                      <span>Helpful ({comment.upvotes})</span>
                     </button>
+                    
                     <button
                       type="button"
-                      className="flex items-center gap-1 hover:text-rose-600 transition-colors cursor-pointer"
+                      onClick={() => handleVote(commentId, "downvote")}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg border transition-all cursor-pointer ${
+                        comment.userVote === "downvote"
+                          ? "text-rose-600 bg-rose-50 border-rose-200 font-bold"
+                          : "text-gray-400 hover:text-rose-600 border-transparent hover:bg-slate-50"
+                      }`}
                       title="Downvote comment"
                     >
-                      <ThumbsDown className="w-3 h-3 text-slate-400 hover:text-rose-500" />
-                      <span>Not Helpful (0)</span>
+                      <ThumbsDown className={`w-3 h-3 transition-transform active:translate-y-0.5 ${
+                        comment.userVote === "downvote" ? "fill-rose-500 text-rose-600" : ""
+                      }`} />
+                      <span>Not Helpful ({comment.downvotes})</span>
                     </button>
                   </div>
                 </div>

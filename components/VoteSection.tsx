@@ -9,6 +9,7 @@ interface VoteSectionProps {
   initialUpvotes?: number;
   initialDownvotes?: number;
   initialUserVote?: "upvote" | "downvote" | 1 | -1 | null;
+  onVoteChange?: (upvotes: number, downvotes: number, userVote: "upvote" | "downvote" | null) => void;
 }
 
 export default function VoteSection({
@@ -16,6 +17,7 @@ export default function VoteSection({
   initialUpvotes = 0,
   initialDownvotes = 0,
   initialUserVote = null,
+  onVoteChange,
 }: VoteSectionProps) {
   const parseInitialVote = (vote: any): "upvote" | "downvote" | null => {
     if (vote === 1 || vote === "upvote") return "upvote";
@@ -72,6 +74,7 @@ export default function VoteSection({
     setUserVote(newVote);
     setUpvotes(newUpvotes);
     setDownvotes(newDownvotes);
+    onVoteChange?.(newUpvotes, newDownvotes, newVote);
     setLoading(true);
 
     try {
@@ -80,17 +83,27 @@ export default function VoteSection({
       const returnedDownvote = res.downvote_count;
       const rawVote = res.user_vote;
 
+      let finalUp = returnedUpvote;
+      let finalDown = returnedDownvote;
+      let finalVote = parseInitialVote(rawVote);
+
       if (typeof returnedUpvote === "number") {
         setUpvotes(returnedUpvote);
+      } else {
+        finalUp = newUpvotes;
       }
       if (typeof returnedDownvote === "number") {
         setDownvotes(returnedDownvote);
+      } else {
+        finalDown = newDownvotes;
       }
-      setUserVote(parseInitialVote(rawVote));
+      setUserVote(finalVote);
+      onVoteChange?.(finalUp ?? 0, finalDown ?? 0, finalVote);
     } catch (err) {
       setUserVote(previousVote);
       setUpvotes(previousUpvotes);
       setDownvotes(previousDownvotes);
+      onVoteChange?.(previousUpvotes, previousDownvotes, previousVote);
       console.error("Failed to register vote:", err);
     } finally {
       setLoading(false);
