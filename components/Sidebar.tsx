@@ -9,7 +9,8 @@ import {
   BarChart3,
   Settings,
   HelpCircle,
-  LogOut
+  LogOut,
+  Navigation
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import WorkerSidebar from "./WorkerSidebar";
@@ -38,6 +39,7 @@ export default function Sidebar({ onItemSelect }: SidebarProps) {
   const mainNavItems = [
     { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { id: "complaints", label: "Complaints", href: "/complaints", icon: MessageSquareWarning },
+    { id: "routing", label: "AI Traffic Detour", href: "/routing", icon: Navigation },
     { id: "reports", label: "Reports", href: "/reports", icon: BarChart3 },
     { id: "settings", label: "Settings", href: "/settings", icon: Settings },
   ];
