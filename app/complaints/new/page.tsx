@@ -8,6 +8,7 @@ import { MapPin, Navigation, Compass, Sparkles, AlertTriangle, ArrowLeft } from 
 import Navbar from "@/components/Navbar";
 import EvidenceUpload from "@/components/EvidenceUpload";
 import LiveAIAnalysis from "@/components/LiveAIAnalysis";
+import DuplicateDetection from "@/components/DuplicateDetection";
 import ReportingGuidelines from "@/components/ReportingGuidelines";
 import SuccessModal from "@/components/SuccessModal";
 import dynamic from "next/dynamic";
@@ -362,6 +363,11 @@ export default function NewComplaintPage() {
         {/* Right Column: AI Analysis & Guidelines (1/3 width) */}
         <div className="w-full lg:w-96 space-y-6 shrink-0">
           <LiveAIAnalysis description={description} />
+          <DuplicateDetection
+            description={description}
+            latitude={latitude}
+            longitude={longitude}
+          />
           <ReportingGuidelines />
         </div>
 
