@@ -89,6 +89,121 @@ export default function Navbar({
     }
   }, []);
 
+  // WebSockets / Web Push Proximity Live Event Simulation
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("munifix_authtoken") : null;
+    if (!token) return;
+
+    // List of simulated WebSocket notifications
+    const mockEvents = [
+      {
+        id: "mock-ws-1",
+        text: "Your report 'Waterlogging at GEC Circle' was auto-reevaluated by Gemini.",
+        type: "complaint" as const,
+        time: "Just now",
+        read: false,
+      },
+      {
+        id: "mock-ws-2",
+        text: "Ahmed Kabir upvoted your municipal complaint.",
+        type: "general" as const,
+        time: "Just now",
+        read: false,
+      },
+      {
+        id: "mock-ws-3",
+        text: "Moderator Rahim Worker assigned your report to 'Road Repair' department.",
+        type: "task" as const,
+        time: "Just now",
+        read: false,
+      },
+      {
+        id: "mock-ws-4",
+        text: "Field worker Rahim Worker resolved your Electricity issue. Verification requested.",
+        type: "complaint" as const,
+        time: "Just now",
+        read: false,
+      },
+    ];
+
+    let eventIdx = 0;
+
+    const triggerLiveNotification = (eventData: typeof mockEvents[0]) => {
+      // 1. Update in-app state
+      setNotifications((prev) => [eventData, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+
+      // 2. Trigger native OS push alert if allowed
+      if (typeof window !== "undefined" && "Notification" in window) {
+        if (Notification.permission === "granted") {
+          try {
+            new Notification("🔔 MuniFix Live Update", {
+              body: eventData.text,
+            });
+          } catch (e) {
+            console.warn("Desktop notifications not supported in this environment:", e);
+          }
+        }
+      }
+
+      // 3. Inject premium animated screen toast (bottom-right)
+      const toastContainerId = "munifix-live-toast-container";
+      let container = document.getElementById(toastContainerId);
+      if (!container) {
+        container = document.createElement("div");
+        container.id = toastContainerId;
+        container.className = "fixed bottom-5 right-5 z-[9999] flex flex-col gap-3 font-sans max-w-sm pointer-events-none";
+        document.body.appendChild(container);
+      }
+
+      const toast = document.createElement("div");
+      toast.className = "bg-slate-900/95 text-white p-4.5 rounded-2xl shadow-xl flex items-start gap-3 border border-slate-700/50 pointer-events-auto transform translate-y-10 opacity-0 transition-all duration-300 w-80 sm:w-[320px]";
+      toast.innerHTML = `
+        <div class="p-2 bg-brand-teal/20 text-brand-teal rounded-xl shrink-0 mt-0.5">
+          <svg class="w-5 h-5 text-teal-400 fill-none stroke-current" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+        </div>
+        <div class="flex-1 space-y-0.5">
+          <p class="text-xs font-black tracking-tight text-slate-100">Live Update (WebSocket)</p>
+          <p class="text-[11px] text-slate-350 leading-relaxed font-semibold">${eventData.text}</p>
+        </div>
+      `;
+
+      container.appendChild(toast);
+      
+      // Animate in
+      setTimeout(() => {
+        toast.className = "bg-slate-900/95 text-white p-4.5 rounded-2xl shadow-xl flex items-start gap-3 border border-slate-700/50 pointer-events-auto transform translate-y-0 opacity-100 transition-all duration-300 w-80 sm:w-[320px]";
+      }, 50);
+
+      // Animate out & cleanup
+      setTimeout(() => {
+        toast.className = "bg-slate-900/95 text-white p-4.5 rounded-2xl shadow-xl flex items-start gap-3 border border-slate-700/50 pointer-events-auto transform translate-y-10 opacity-0 transition-all duration-300 w-80 sm:w-[320px]";
+        setTimeout(() => {
+          toast.remove();
+        }, 300);
+      }, 6000);
+    };
+
+    // Periodically push mock events (every 30s)
+    const interval = setInterval(() => {
+      if (eventIdx < mockEvents.length) {
+        const nextEvent = mockEvents[eventIdx];
+        triggerLiveNotification({
+          ...nextEvent,
+          id: nextEvent.id + "-" + Date.now(),
+        });
+        eventIdx++;
+      } else {
+        eventIdx = 0;
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const handleBellClick = () => {
     const nextState = !notificationsOpen;
     setNotificationsOpen(nextState);

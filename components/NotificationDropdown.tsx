@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { ClipboardCheck, Pin, BarChart3, BellRing } from "lucide-react";
 
 export interface NotificationItem {
@@ -27,6 +27,20 @@ export default function NotificationDropdown({
   onItemClick,
 }: NotificationDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [pushEnabled, setPushEnabled] = useState<string>("default");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setPushEnabled(Notification.permission);
+    }
+  }, []);
+
+  const handleRequestPushPermission = async () => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      const permission = await Notification.requestPermission();
+      setPushEnabled(permission);
+    }
+  };
 
   // Close dropdown on outside clicks
   useEffect(() => {
@@ -88,10 +102,37 @@ export default function NotificationDropdown({
         </button>
       </div>
 
+      {/* Live Stream Panel */}
+      <div className="py-2.5 px-3 bg-slate-50 border border-slate-150/60 rounded-2xl mt-3 space-y-2 text-[10px] font-bold text-slate-500 shadow-xxs">
+        <div className="flex items-center justify-between select-none">
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+            <span className="text-emerald-700">Live WebSockets Stream</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-extrabold">STATUS: CONNECTED</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span>Browser Desktop Notifications</span>
+          <button
+            type="button"
+            onClick={handleRequestPushPermission}
+            className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border transition-all ${
+              pushEnabled === "granted"
+                ? "bg-emerald-50 text-emerald-750 border-emerald-200"
+                : pushEnabled === "denied"
+                ? "bg-rose-50 text-rose-750 border-rose-200"
+                : "bg-white text-brand-teal border-brand-teal/20 hover:bg-slate-100 cursor-pointer"
+            }`}
+          >
+            {pushEnabled === "granted" ? "Active" : pushEnabled === "denied" ? "Blocked" : "Request"}
+          </button>
+        </div>
+      </div>
+
       {/* Items List */}
       <div className="max-h-[300px] overflow-y-auto space-y-4 py-4 pr-1 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
         {notifications.length === 0 ? (
-          <div className="text-center py-6 text-slate-450 font-bold text-xs">
+          <div className="text-center py-6 text-slate-400 font-bold text-xs">
             No notifications yet
           </div>
         ) : (
