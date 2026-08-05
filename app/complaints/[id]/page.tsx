@@ -9,6 +9,8 @@ import Sidebar from "@/components/Sidebar";
 import Badge from "@/components/Badge";
 import ComplaintMetrics from "@/components/ComplaintMetrics";
 import Timeline from "@/components/Timeline";
+import VoteSection from "@/components/VoteSection";
+import CommentSection from "@/components/CommentSection";
 import { fetchComplaintById, updateComplaintStatus, deleteComplaint, fetchUsers } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -73,40 +75,43 @@ export default function ComplaintDetailsPage() {
     }, 3000);
   };
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetchComplaintById(id);
-      if (res.success) {
-        const c = res.complaint;
-        const mapped = {
-          id: c.id,
-          title: c.category + " Issue - " + (c.citizen_name || "Citizen Report"),
-          description: c.description,
-          priority: c.priority === "critical" || c.priority === "high" ? "CRITICAL" : c.priority === "low" ? "LOW" : "MEDIUM",
-          status: c.status === "assigned" ? "Dispatched" : c.status === "in_progress" ? "In Progress" : c.status === "resolved" ? "Resolved" : c.status === "cancelled" ? "Cancelled" : "Pending Approval",
-          location: c.latitude && c.longitude ? `${c.latitude}, ${c.longitude}` : "Chattogram City",
-          time: `Reported on ${new Date(c.created_at).toLocaleDateString()} • ${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-          image: Array.isArray(c.image_url) && c.image_url.length > 0 ? c.image_url[0] : (typeof c.image_url === "string" ? c.image_url : null),
-          category: c.category,
-          date: c.created_at,
-          reporter: c.citizen_name,
-          department_id: c.department_id,
-          original: c
-        };
-        setComplaint(mapped);
-        setAssignment(res.assignment);
-        setHistory(res.history);
-        setNewStatus(c.status);
-        setOverrideCategory(c.category || "");
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+ const loadData = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    const res = await fetchComplaintById(id);
+    if (res.success) {
+      const c = res.complaint;
+      const mapped = {
+        id: c.id,
+        title: c.category + " Issue - " + (c.citizen_name || "Citizen Report"),
+        description: c.description,
+        priority: c.priority === "critical" || c.priority === "high" ? "CRITICAL" : c.priority === "low" ? "LOW" : "MEDIUM",
+        status: c.status === "assigned" ? "Dispatched" : c.status === "in_progress" ? "In Progress" : c.status === "resolved" ? "Resolved" : c.status === "cancelled" ? "Cancelled" : "Pending Approval",
+        location: c.latitude && c.longitude ? `${c.latitude}, ${c.longitude}` : "Chattogram City",
+        time: `Reported on ${new Date(c.created_at).toLocaleDateString()} • ${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        image: Array.isArray(c.image_url) && c.image_url.length > 0 ? c.image_url[0] : (typeof c.image_url === "string" ? c.image_url : null),
+        category: c.category,
+        date: c.created_at,
+        reporter: c.citizen_name,
+        department_id: c.department_id,
+        upvote_count: c.upvote_count ?? 0,
+        downvote_count: c.downvote_count ?? 0,
+        user_vote: c.user_vote ?? null,
+        original: c
+      };
+      setComplaint(mapped);
+      setAssignment(res.assignment);
+      setHistory(res.history);
+      setNewStatus(c.status);
+      setOverrideCategory(c.category || "");
     }
-  };
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     loadData();
@@ -157,7 +162,6 @@ export default function ComplaintDetailsPage() {
       const data = await res.json();
       if (!data.success) throw new Error(data.message);
       triggerToast('Category updated successfully');
-      // Refresh complaint data
       await loadData();
     } catch (err: any) {
       setOverrideError(err.message);
@@ -306,7 +310,7 @@ export default function ComplaintDetailsPage() {
               <span className="text-brand-teal font-extrabold">{complaint.id}</span>
             </div>
 
-            {/* Back button for mobile/tablet print fallback */}
+            {/* Back button for mobile */}
             <Link
               href="/complaints"
               className="inline-flex items-center text-xs font-bold text-gray-400 hover:text-brand-teal transition-colors uppercase tracking-wider gap-1.5 md:hidden print:hidden"
@@ -317,13 +321,24 @@ export default function ComplaintDetailsPage() {
 
             {/* Details Title Block */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-150 pb-5">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight">
-                  {complaint.title}
-                </h1>
-                <p className="text-gray-500 text-sm font-semibold mt-1">
-                  Reported by <span className="text-gray-700 font-extrabold">{complaint.reporter || "Ahmed Kabir"}</span> on {complaint.time}
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                {/* Voting Section Integrated in Header */}
+                <div className="print:hidden shrink-0">
+                  <VoteSection
+  complaintId={complaint.id}
+  initialUpvotes={complaint.upvote_count}
+  initialDownvotes={complaint.downvote_count}
+  initialUserVote={complaint.user_vote}
+/>
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight">
+                    {complaint.title}
+                  </h1>
+                  <p className="text-gray-500 text-sm font-semibold mt-1">
+                    Reported by <span className="text-gray-700 font-extrabold">{complaint.reporter || "Ahmed Kabir"}</span> on {complaint.time}
+                  </p>
+                </div>
               </div>
 
               {/* Action buttons (Share & Export) */}
@@ -366,7 +381,6 @@ export default function ComplaintDetailsPage() {
                   onClick={handleExportPDF}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4.5 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 active:scale-[0.98] cursor-pointer"
                 >
-                  {/* Custom PDF download icon */}
                   <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
                     <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z" />
                   </svg>
@@ -390,7 +404,6 @@ export default function ComplaintDetailsPage() {
                       alt={complaint.title}
                       className="w-full h-full object-cover"
                     />
-                    {/* Overlaid Priority Badge */}
                     <div className="absolute top-4 right-4">
                       <Badge type="priority" value={complaint.priority} />
                     </div>
@@ -473,23 +486,32 @@ export default function ComplaintDetailsPage() {
 
             </div>
 
-            {/* Right Card: Description & Metrics */}
+            {/* Right Card: Description, Metrics & Comments */}
             <div className="lg:col-span-7 bg-white rounded-3xl border border-gray-150 p-6 sm:p-7 shadow-sm space-y-6 flex flex-col justify-between print:col-span-7 print:shadow-none">
               
-              <div className="space-y-3.5">
-                <h3 className="text-base sm:text-lg font-bold text-gray-800 tracking-tight">
-                  Detailed Description
-                </h3>
-                <p className="text-gray-500 font-semibold text-sm leading-relaxed">
-                  {complaint.description}
-                </p>
+              <div className="space-y-6">
+                <div className="space-y-3.5">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 tracking-tight">
+                    Detailed Description
+                  </h3>
+                  <p className="text-gray-500 font-semibold text-sm leading-relaxed">
+                    {complaint.description}
+                  </p>
+                </div>
+
+                {/* Performance Metrics Cards */}
+                <div className="pt-6 border-t border-slate-50">
+                  <ComplaintMetrics
+                    responseTime={complaint.responseTime}
+                    citizensImpacted={complaint.citizensImpacted}
+                  />
+                </div>
               </div>
 
-              {/* Performance Metrics Cards */}
-              <div className="pt-6 border-t border-slate-50">
-                <ComplaintMetrics
-                  responseTime={complaint.responseTime}
-                  citizensImpacted={complaint.citizensImpacted}
+              {/* Integrated Comment Section */}
+              <div className="print:hidden">
+                <CommentSection
+                  complaintId={complaint.id}
                 />
               </div>
 
@@ -499,7 +521,7 @@ export default function ComplaintDetailsPage() {
 
           {/* Admin / Dept Admin operations panel */}
           {user && (user.role === "dept_admin" || user.role === "super_admin") && (
-            <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm space-y-4">
+            <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm space-y-4 print:hidden">
               <div className="flex items-center space-x-2 text-brand-teal">
                 <Edit3 className="w-5 h-5 stroke-[2.5]" />
                 <h3 className="text-base sm:text-lg font-extrabold tracking-tight">Admin Action Console</h3>

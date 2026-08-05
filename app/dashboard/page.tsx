@@ -12,7 +12,10 @@ import {
   Loader2,
   PlusCircle,
   MapPin,
-  RotateCcw
+  RotateCcw,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquare
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
@@ -308,6 +311,22 @@ export default function CitizenDashboard() {
                                   <MapPin className="w-3.5 h-3.5 mr-1 text-gray-400" />
                                   {c.latitude && c.longitude ? `${parseFloat(c.latitude).toFixed(4)}, ${parseFloat(c.longitude).toFixed(4)}` : "Chattogram Area"}
                                 </span>
+
+                                <div className="flex items-center gap-2">
+                                  <span className="flex items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 gap-1 text-[10px]" title="Upvotes">
+                                    <ThumbsUp className="w-3 h-3 text-emerald-500" />
+                                    <span className="text-gray-700 font-bold">{c.upvote_count || 0}</span>
+                                  </span>
+                                  <span className="flex items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 gap-1 text-[10px]" title="Downvotes">
+                                    <ThumbsDown className="w-3 h-3 text-rose-500" />
+                                    <span className="text-gray-700 font-bold">{c.downvote_count || 0}</span>
+                                  </span>
+                                  <span className="flex items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 gap-1 text-[10px]" title="Comments">
+                                    <MessageSquare className="w-3 h-3 text-brand-teal" />
+                                    <span className="text-gray-700 font-bold">{c.comment_count || 0}</span>
+                                  </span>
+                                </div>
+
                                 <ArrowRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" />
                               </div>
                             </div>
