@@ -174,6 +174,22 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
     }
   };
 
+  const handleTogglePin = async (commentId: string, currentPinStatus: boolean) => {
+    try {
+      const newPinStatus = !currentPinStatus;
+      const res = await pinComment(commentId, newPinStatus);
+      if (res && res.success) {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === commentId ? { ...c, is_pinned: newPinStatus } : c
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to pin comment:", err);
+    }
+  };
+
   const handleVote = (commentId: string, type: "upvote" | "downvote") => {
     setComments((prevComments) =>
       prevComments.map((comment) => {
