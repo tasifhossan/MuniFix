@@ -92,18 +92,14 @@ export default function Timeline({ steps }: TimelineProps) {
               </div>
 
               {/* Main Content */}
-              {step.bubbleText && step.bubbleImages ? (
-                /* Work progress custom bubble */
+              {step.bubbleText ? (
+                /* Work progress custom bubble with worker's resolution notes */
                 <div className="space-y-2 w-full mt-2">
-                  <p className="text-gray-500 font-medium leading-relaxed">
-                    Excavation started. Main valve shut off to control flow. Road crew on standby for surfacing.
-                  </p>
-                  
                   <div className="bg-slate-50 border border-gray-150 rounded-2xl p-4 max-w-md space-y-4 shadow-inner">
                     <p className="text-gray-700 italic font-semibold text-xs leading-relaxed">
                       &ldquo;{step.bubbleText}&rdquo;
                     </p>
-                    {step.bubbleImages.length > 0 && (
+                    {step.bubbleImages && step.bubbleImages.length > 0 && (
                       <div className="flex gap-3">
                         {step.bubbleImages.map((img, i) => (
                           <div key={i} className="w-20 h-16 relative rounded-lg overflow-hidden border border-gray-200 shrink-0">

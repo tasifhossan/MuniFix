@@ -588,10 +588,31 @@ export default function ComplaintDetailsPage() {
 
                 {/* Performance Metrics Cards */}
                 <div className="pt-6 border-t border-slate-50">
-                  <ComplaintMetrics
-                    responseTime={complaint.responseTime}
-                    citizensImpacted={complaint.citizensImpacted}
-                  />
+                  {(() => {
+                    const c = complaint.original;
+
+                    // Citizens Impacted: estimate based on upvotes (each upvoter represents ~8 nearby people)
+                    const upvotes = complaint.upvote_count ?? 0;
+                    const baseImpact = upvotes > 0 ? upvotes * 8 + 12 : 0;
+                    const citizensImpacted = baseImpact > 0
+                      ? `~${baseImpact.toLocaleString()} people`
+                      : "No estimates yet";
+
+                    // Community Engagement: total upvotes + downvotes + comments
+                    const totalVotes = (complaint.upvote_count ?? 0) + (complaint.downvote_count ?? 0);
+                    const commentCount = c?.comment_count ?? 0;
+                    const totalEngagement = totalVotes + commentCount;
+                    const communityEngagement = totalEngagement > 0
+                      ? `${totalEngagement} interaction${totalEngagement !== 1 ? "s" : ""}`
+                      : "0 interactions";
+
+                    return (
+                      <ComplaintMetrics
+                        citizensImpacted={citizensImpacted}
+                        communityEngagement={communityEngagement}
+                      />
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -727,27 +748,56 @@ export default function ComplaintDetailsPage() {
           {/* Timeline resolution progress */}
           {history.length > 0 && (
             <div className="w-full print:break-inside-avoid">
-              <Timeline steps={
-                history.map((h, index) => {
-                  const isLast = index === history.length - 1;
+              <Timeline steps={(() => {
+                // Deduplicate: remove consecutive entries with same status AND same notes (within 10 min window)
+                const deduped = history.filter((h, index) => {
+                  if (index === 0) return true;
+                  const prev = history[index - 1];
+                  const sameStatus = h.new_status === prev.new_status;
+                  const sameNotes = (h.notes || "") === (prev.notes || "");
+                  const timeDiff = Math.abs(new Date(h.changed_at).getTime() - new Date(prev.changed_at).getTime());
+                  const within10min = timeDiff < 10 * 60 * 1000;
+                  return !(sameStatus && sameNotes && within10min);
+                });
+
+                return deduped.map((h, index) => {
+                  const isLast = index === deduped.length - 1;
+
+                  const isWorker = h.changer_role === "field_worker";
+                  const isAdmin = h.changer_role === "dept_admin" || h.changer_role === "super_admin";
+                  const hasNotes = h.notes && h.notes.length > 10 && h.notes !== `Status updated from ${h.old_status} to ${h.new_status}.`;
+
+                  // Differentiate titles by who made the change
                   let title = "Report Filed";
-                  if (h.new_status === "assigned") title = "Agency Dispatched";
-                  else if (h.new_status === "in_progress") title = "Work Started";
-                  else if (h.new_status === "resolved") title = "Issue Resolved";
-                  else if (h.new_status === "cancelled") title = "Report Cancelled";
+                  if (h.new_status === "assigned") {
+                    title = isAdmin ? "Worker Assigned" : isWorker && hasNotes ? "Worker Notes" : "Worker Assigned";
+                  } else if (h.new_status === "in_progress") {
+                    title = isWorker ? (hasNotes ? "Worker Notes" : "Work In Progress") : "Work Started";
+                  } else if (h.new_status === "resolved") {
+                    title = isWorker ? "Work Completed" : "Issue Resolved";
+                  } else if (h.new_status === "cancelled") {
+                    title = "Report Cancelled";
+                  }
+
+                  // Format timestamp properly in local time
+                  const changedAt = new Date(h.changed_at);
+                  const dateStr = changedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                  const timeStr = changedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+                  const byStr = h.changer_name ? ` — by ${h.changer_name}` : "";
 
                   return {
                     title,
                     status: h.new_status === "assigned" ? "Assigned" : h.new_status === "in_progress" ? "In Progress" : h.new_status === "resolved" ? "Resolved" : h.new_status === "cancelled" ? "Cancelled" : "Pending",
-                    description: h.notes || `Complaint status changed to ${h.new_status}.`,
-                    time: new Date(h.changed_at).toLocaleDateString() + " • " + new Date(h.changed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    description: h.notes || `Status changed to ${h.new_status}.`,
+                    time: `${dateStr} • ${timeStr}${byStr}`,
                     completed: true,
                     current: isLast,
-                    bubbleText: h.new_status === "in_progress" ? h.notes : undefined,
+                    // Show notes in quoted bubble for worker statuses with meaningful notes
+                    bubbleText: hasNotes && (h.new_status === "in_progress" || h.new_status === "resolved" || h.new_status === "assigned") ? h.notes : undefined,
                     bubbleImages: []
                   };
-                })
-              } />
+                });
+              })()} />
             </div>
           )}
 

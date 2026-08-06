@@ -60,60 +60,64 @@ export default function SmartRoutingPage() {
     loadRoadblocks();
   }, []);
 
-  const calculateDetour = async (rb: Roadblock) => {
-    const lat = parseFloat(rb.latitude);
-    const lon = parseFloat(rb.longitude);
-    if (isNaN(lat) || isNaN(lon)) return;
-
-    // Auto-generate start and destination coordinates around the roadblock
-    const start: [number, number] = [lat - 0.004, lon - 0.004];
-    const end: [number, number] = [lat + 0.004, lon + 0.004];
-
-    setOriginCoords(start);
-    setDestCoords(end);
-
-    try {
-      setCalculating(true);
-      const res = await requestAIReroute({
-        roadblock_id: rb.id,
-        origin_lat: start[0],
-        origin_lng: start[1],
-        destination_lat: end[0],
-        destination_lng: end[1],
-        origin_name: "Auto-Generated Start Pin",
-        destination_name: "Auto-Generated End Pin"
-      });
-
-      if (res.success && res.data) {
-        const snappedBlocked = await getRoadSnappedPath(res.data.paths.blocked_path);
-        const snappedBypass = await getRoadSnappedPath(res.data.paths.bypass_path);
-        setBlockedPath(snappedBlocked);
-        setBypassPath(snappedBypass);
-        setOriginalDuration(`${res.data.metrics.blocked_eta_mins} mins`);
-        setBypassDuration(`${res.data.metrics.bypass_eta_mins} mins`);
-        setDistanceDiff(`+${res.data.metrics.distance_diff_km} km`);
-        setAiReasoning(res.data.ai_reasoning);
-      }
-    } catch (err: any) {
-      console.error("AI Reroute calculation failed, using fallback:", err);
-      // Fallback mockup calculation if backend API has issues
-      setBlockedPath([start, [lat, lon], end]);
-      setBypassPath([start, [lat + 0.003, lon - 0.003], [lat + 0.003, lon + 0.003], end]);
-      setOriginalDuration("40 mins");
-      setBypassDuration("15 mins");
-      setDistanceDiff("+1.2 km");
-      setAiReasoning(`AI Rerouting is actively routing around the roadblock "${rb.title}" (Cause: ${rb.cause}).`);
-    } finally {
-      setCalculating(false);
-    }
-  };
-
+  // Auto-select and initialize default coordinates when roadblock changes
   useEffect(() => {
     if (selectedRoadblock) {
-      calculateDetour(selectedRoadblock);
+      const lat = parseFloat(selectedRoadblock.latitude);
+      const lon = parseFloat(selectedRoadblock.longitude);
+      if (!isNaN(lat) && !isNaN(lon)) {
+        setOriginCoords([lat - 0.004, lon - 0.004]);
+        setDestCoords([lat + 0.004, lon + 0.004]);
+      }
     } else {
       setOriginCoords(null);
       setDestCoords(null);
+    }
+  }, [selectedRoadblock]);
+
+  // Recalculate detour dynamically whenever roadblock or coordinates change
+  useEffect(() => {
+    if (selectedRoadblock && originCoords && destCoords) {
+      const fetchDetour = async () => {
+        try {
+          setCalculating(true);
+          const res = await requestAIReroute({
+            roadblock_id: selectedRoadblock.id,
+            origin_lat: originCoords[0],
+            origin_lng: originCoords[1],
+            destination_lat: destCoords[0],
+            destination_lng: destCoords[1],
+            origin_name: "Selected Start Pin",
+            destination_name: "Selected End Pin"
+          });
+
+          if (res.success && res.data) {
+            const snappedBlocked = await getRoadSnappedPath(res.data.paths.blocked_path);
+            const snappedBypass = await getRoadSnappedPath(res.data.paths.bypass_path);
+            setBlockedPath(snappedBlocked);
+            setBypassPath(snappedBypass);
+            setOriginalDuration(`${res.data.metrics.blocked_eta_mins} mins`);
+            setBypassDuration(`${res.data.metrics.bypass_eta_mins} mins`);
+            setDistanceDiff(`+${res.data.metrics.distance_diff_km} km`);
+            setAiReasoning(res.data.ai_reasoning);
+          }
+        } catch (err: any) {
+          console.error("AI Reroute calculation failed, using fallback:", err);
+          const lat = parseFloat(selectedRoadblock.latitude);
+          const lon = parseFloat(selectedRoadblock.longitude);
+          setBlockedPath([originCoords, [lat, lon], destCoords]);
+          setBypassPath([originCoords, [lat + 0.003, lon - 0.003], [lat + 0.003, lon + 0.003], destCoords]);
+          setOriginalDuration("40 mins");
+          setBypassDuration("15 mins");
+          setDistanceDiff("+1.2 km");
+          setAiReasoning(`AI Rerouting is actively routing around the roadblock "${selectedRoadblock.title}" (Cause: ${selectedRoadblock.cause}).`);
+        } finally {
+          setCalculating(false);
+        }
+      };
+
+      fetchDetour();
+    } else {
       setBlockedPath(null);
       setBypassPath(null);
       setOriginalDuration("0 mins");
@@ -121,7 +125,7 @@ export default function SmartRoutingPage() {
       setDistanceDiff("+0 km");
       setAiReasoning("Select an active roadblock to view AI detour planning.");
     }
-  }, [selectedRoadblock]);
+  }, [selectedRoadblock, originCoords, destCoords]);
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
@@ -322,6 +326,8 @@ export default function SmartRoutingPage() {
                   destination={destCoords}
                   blockedPath={blockedPath}
                   bypassPath={bypassPath}
+                  onSetOrigin={setOriginCoords}
+                  onSetDestination={setDestCoords}
                   onSelectRoadblock={setSelectedRoadblock}
                 />
               </div>

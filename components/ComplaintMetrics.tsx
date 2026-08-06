@@ -1,45 +1,46 @@
 "use client";
 
 import React from "react";
-import { Clock, Users } from "lucide-react";
+import { Users, MessageSquare } from "lucide-react";
 
 interface ComplaintMetricsProps {
-  responseTime?: string;
   citizensImpacted?: string;
+  communityEngagement?: string;
 }
 
 export default function ComplaintMetrics({
-  responseTime = "Pending",
-  citizensImpacted = "Pending"
+  citizensImpacted = "Pending",
+  communityEngagement = "0 interactions",
 }: ComplaintMetricsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {/* Response Time Card */}
-      <div className="bg-slate-50 border border-gray-150 rounded-2xl p-5 flex items-center space-x-4">
-        <div className="p-3 bg-blue-100 text-blue-600 rounded-xl shrink-0">
-          <Clock className="w-5 h-5 stroke-[2.5]" />
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+      {/* Citizens Impacted Card */}
+      <div className="bg-slate-50 border border-gray-150 rounded-2xl p-4 flex items-center space-x-3.5">
+        <div className="p-2.5 bg-teal-100 text-brand-teal rounded-xl shrink-0">
+          <Users className="w-4 h-4 stroke-[2.5]" />
         </div>
         <div>
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
-            Response Time
+          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">
+            Citizens Impacted
           </span>
-          <p className="text-lg font-black text-gray-800 mt-0.5">
-            {responseTime}
+          <p className={`text-sm font-black mt-0.5 ${citizensImpacted === "Pending" ? "text-gray-400 italic" : "text-gray-800"}`}>
+            {citizensImpacted}
           </p>
         </div>
       </div>
 
-      {/* Citizens Impacted Card */}
-      <div className="bg-slate-50 border border-gray-150 rounded-2xl p-5 flex items-center space-x-4">
-        <div className="p-3 bg-teal-100 text-brand-teal rounded-xl shrink-0">
-          <Users className="w-5 h-5 stroke-[2.5]" />
+      {/* Community Engagement Card */}
+      <div className="bg-slate-50 border border-gray-150 rounded-2xl p-4 flex items-center space-x-3.5">
+        <div className="p-2.5 bg-purple-100 text-purple-600 rounded-xl shrink-0">
+          <MessageSquare className="w-4 h-4 stroke-[2.5]" />
         </div>
         <div>
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
-            Citizens Impacted
+          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">
+            Engagement
           </span>
-          <p className="text-lg font-black text-gray-800 mt-0.5">
-            {citizensImpacted}
+          <p className="text-sm font-black text-gray-800 mt-0.5">
+            {communityEngagement}
           </p>
         </div>
       </div>

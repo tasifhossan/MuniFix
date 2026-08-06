@@ -66,11 +66,15 @@ export default function WorkerTaskDetailPage() {
         formData.append("status", dbStatus);
         formData.append("notes", data.notes);
         formData.append("images", data.file); // Match multer array images key
+        if (profile?.id) {
+          formData.append("worker_id", profile.id);
+        }
         payload = formData;
       } else {
         payload = {
           status: dbStatus,
-          notes: data.notes
+          notes: data.notes,
+          ...(profile?.id ? { worker_id: profile.id } : {})
         };
       }
 

@@ -222,7 +222,97 @@ export default function AdminComplaintsPage() {
     }
   };
 
-  // Slice list for local pagination
+  const handleExport = async () => {
+    if (complaints.length === 0) {
+      alert("No complaints to export.");
+      return;
+    }
+
+    // Dynamically import to avoid SSR issues
+    const { default: jsPDF } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+    // ── Header bar ──
+    doc.setFillColor(0, 92, 85); // brand teal
+    doc.rect(0, 0, pageWidth, 22, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text("MuniFix Ctg — Complaint Report", 14, 14);
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Exported on ${dateStr}`, pageWidth - 14, 14, { align: "right" });
+
+    // ── Summary stats row ──
+    const pending   = complaints.filter(c => c.status === "Pending").length;
+    const inProg    = complaints.filter(c => c.status === "In Progress").length;
+    const resolved  = complaints.filter(c => c.status === "Resolved").length;
+    const assigned  = complaints.filter(c => c.status === "Assigned").length;
+
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 60);
+    doc.setFont("helvetica", "bold");
+    const summaryY = 30;
+    doc.text(`Total: ${complaints.length}`, 14, summaryY);
+    doc.text(`Pending: ${pending}`, 55, summaryY);
+    doc.text(`In Progress: ${inProg}`, 95, summaryY);
+    doc.text(`Assigned: ${assigned}`, 145, summaryY);
+    doc.text(`Resolved: ${resolved}`, 190, summaryY);
+
+    // ── Table ──
+    const statusColors: Record<string, [number, number, number]> = {
+      "Pending":     [219, 234, 254],
+      "In Progress": [255, 237, 213],
+      "Resolved":    [209, 250, 229],
+      "Assigned":    [224, 242, 254],
+    };
+
+    autoTable(doc, {
+      startY: 36,
+      head: [["Complaint ID", "Category", "Department", "Priority", "Status", "Date Reported"]],
+      body: complaints.map(c => [c.id, c.category, c.department, c.priority, c.status, c.dateReported]),
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+        font: "helvetica",
+        textColor: [30, 30, 30],
+      },
+      headStyles: {
+        fillColor: [0, 92, 85],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 8,
+      },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      didParseCell(data) {
+        if (data.section === "body" && data.column.index === 4) {
+          const status = data.cell.raw as string;
+          const color = statusColors[status];
+          if (color) data.cell.styles.fillColor = color;
+        }
+      },
+      margin: { left: 14, right: 14 },
+    });
+
+    // ── Footer ──
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(160, 160, 160);
+      doc.text(`Page ${i} of ${totalPages}  •  MuniFix Ctg  •  Confidential`, pageWidth / 2, doc.internal.pageSize.getHeight() - 6, { align: "center" });
+    }
+
+    doc.save(`munifix_complaints_${now.toISOString().slice(0, 10)}.pdf`);
+  };
   const itemsPerPage = 10;
   const paginatedComplaints = complaints.slice(
     (currentPage - 1) * itemsPerPage,
@@ -267,9 +357,7 @@ export default function AdminComplaintsPage() {
               dateRange={dateRange}
               setDateRange={setDateRange}
               onApply={() => {}}
-              onExport={() => {
-                alert("Exporting data as CSV/Excel...");
-              }}
+              onExport={handleExport}
               hideDepartment={isDeptAdmin}
             />
 

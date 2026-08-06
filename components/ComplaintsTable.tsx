@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Trash2 } from "lucide-react";
 
 export interface ComplaintItem {
@@ -35,6 +36,7 @@ export default function ComplaintsTable({
   onStatusChange,
   onDeleteClick,
 }: ComplaintsTableProps) {
+  const router = useRouter();
   
   // Custom Priority Badge with dot
   const renderPriority = (priority: ComplaintItem["priority"]) => {
@@ -117,11 +119,12 @@ export default function ComplaintsTable({
             {items.map((item) => (
               <tr
                 key={item.id}
-                className="transition-colors duration-150 hover:bg-slate-50/40"
+                className="transition-colors duration-150 hover:bg-slate-50/60 cursor-pointer"
+                onClick={() => router.push(`/complaints/${item.id}`)}
               >
                 {/* Complaint ID */}
                 <td className="py-4.5 px-6 vertical-middle">
-                  <span className="text-sm font-extrabold text-[#0f766e] block leading-tight select-all">
+                  <span className="text-sm font-extrabold text-[#0f766e] block leading-tight hover:underline">
                     #{item.id}
                   </span>
                 </td>
@@ -178,10 +181,10 @@ export default function ComplaintsTable({
                 </td>
 
                 {/* Actions */}
-                <td className="py-4.5 px-6 text-right vertical-middle">
+                <td className="py-4.5 px-6 text-right vertical-middle" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2">
                     <button
-                      onClick={() => onAssignClick?.(item)}
+                      onClick={(e) => { e.stopPropagation(); onAssignClick?.(item); }}
                       className="p-1.5 text-slate-400 hover:text-[#005c55] hover:bg-slate-50 rounded-lg transition-all cursor-pointer inline-flex active:scale-90"
                       title="Assign Field Worker"
                     >
@@ -189,7 +192,8 @@ export default function ComplaintsTable({
                     </button>
                     <select
                       value={item.status}
-                      onChange={(e) => onStatusChange?.(item.id, e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => { e.stopPropagation(); onStatusChange?.(item.id, e.target.value); }}
                       className="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-700 font-bold"
                     >
                       <option value="Pending">Pending</option>
@@ -199,7 +203,7 @@ export default function ComplaintsTable({
                       <option value="Under Review">Under Review</option>
                     </select>
                     <button
-                      onClick={() => onDeleteClick?.(item.id)}
+                      onClick={(e) => { e.stopPropagation(); onDeleteClick?.(item.id); }}
                       className="p-1.5 text-slate-400 hover:text-red-655 hover:bg-red-50 rounded-lg transition-all cursor-pointer inline-flex active:scale-90"
                       title="Delete Complaint"
                     >
