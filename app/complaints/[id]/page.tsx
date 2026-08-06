@@ -13,9 +13,11 @@ import VoteSection from "@/components/VoteSection";
 import CommentSection from "@/components/CommentSection";
 import { fetchComplaintById, updateComplaintStatus, deleteComplaint, fetchUsers } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSocket } from "@/contexts/SocketContext";
 
 export default function ComplaintDetailsPage() {
   const { user } = useAuth();
+  const { socket } = useSocket();
   const params = useParams();
   const router = useRouter();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -116,6 +118,36 @@ export default function ComplaintDetailsPage() {
   useEffect(() => {
     loadData();
   }, [id]);
+
+  useEffect(() => {
+    if (!socket || !id) return;
+
+    console.log(`[Socket] Joining room complaint:${id}`);
+    socket.emit("join_complaint_room", id);
+
+    const handleComplaintVoted = (data: any) => {
+      console.log("[Socket] Live complaint vote update:", data);
+      if (data.complaint_id === id) {
+        setComplaint((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                upvote_count: data.upvote_count,
+                downvote_count: data.downvote_count,
+              }
+            : null
+        );
+      }
+    };
+
+    socket.on("complaint_voted", handleComplaintVoted);
+
+    return () => {
+      console.log(`[Socket] Leaving room complaint:${id}`);
+      socket.emit("leave_complaint_room", id);
+      socket.off("complaint_voted", handleComplaintVoted);
+    };
+  }, [socket, id]);
 
   const handleUpdateStatus = async (e: React.FormEvent) => {
     e.preventDefault();

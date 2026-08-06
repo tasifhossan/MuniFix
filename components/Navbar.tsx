@@ -74,18 +74,46 @@ export default function Navbar({
   const loadNotifications = async () => {
     try {
       setNotificationsLoading(true);
+      
+      // Load local notifications from local storage
+      let localMapped: NotificationItem[] = [];
+      try {
+        const stored = localStorage.getItem("munifix_local_notifications");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          localMapped = parsed.map((n: any) => ({
+            id: n.id,
+            text: n.message,
+            type: n.complaint_id ? "complaint" : "general",
+            time: formatTime(n.created_at),
+            read: n.is_read,
+            created_at: n.created_at, // keep raw date for sorting
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to parse local notifications:", err);
+      }
+
       const data = await fetchNotifications();
+      let merged = [...localMapped];
+
       if (data.success) {
-        const mapped = data.notifications.map((n: any) => ({
+        const remoteMapped = data.notifications.map((n: any) => ({
           id: n.id,
           text: n.message,
           type: n.complaint_id ? "complaint" : "general",
           time: formatTime(n.created_at),
-          read: n.is_read
+          read: n.is_read,
+          created_at: n.created_at, // keep raw date for sorting
         }));
-        setNotifications(mapped);
-        setUnreadCount(mapped.filter((n: any) => !n.read).length);
+        merged = [...merged, ...remoteMapped];
       }
+
+      // Sort by created_at descending (latest first)
+      merged.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      setNotifications(merged);
+      setUnreadCount(merged.filter((n: any) => !n.read).length);
     } catch (err) {
       console.error("Failed to load notifications:", err);
     } finally {
@@ -227,10 +255,24 @@ export default function Navbar({
     const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
+
+    // Mark local notifications as read in local storage
     try {
-      await Promise.all(unreadIds.map(id => markNotificationAsRead(String(id))));
+      const stored = localStorage.getItem("munifix_local_notifications");
+      if (stored) {
+        const list = JSON.parse(stored);
+        const updatedList = list.map((n: any) => ({ ...n, is_read: true }));
+        localStorage.setItem("munifix_local_notifications", JSON.stringify(updatedList));
+      }
     } catch (err) {
-      console.error("Failed to mark all as read:", err);
+      console.error("Failed to mark local notifications as read:", err);
+    }
+
+    try {
+      const remoteUnreadIds = unreadIds.filter(id => !String(id).startsWith("local_"));
+      await Promise.all(remoteUnreadIds.map(id => markNotificationAsRead(String(id))));
+    } catch (err) {
+      console.error("Failed to mark remote notifications as read:", err);
     }
   };
 
@@ -239,10 +281,27 @@ export default function Navbar({
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
     setUnreadCount((prev) => Math.max(0, prev - 1));
-    try {
-      await markNotificationAsRead(String(id));
-    } catch (err) {
-      console.error("Failed to mark notification as read:", err);
+
+    const idStr = String(id);
+    if (idStr.startsWith("local_")) {
+      // Mark local notification as read in local storage
+      try {
+        const stored = localStorage.getItem("munifix_local_notifications");
+        if (stored) {
+          const list = JSON.parse(stored);
+          const updatedList = list.map((n: any) => n.id === idStr ? { ...n, is_read: true } : n);
+          localStorage.setItem("munifix_local_notifications", JSON.stringify(updatedList));
+        }
+      } catch (err) {
+        console.error("Failed to mark single local notification as read:", err);
+      }
+    } else {
+      // Remote notification
+      try {
+        await markNotificationAsRead(idStr);
+      } catch (err) {
+        console.error("Failed to mark notification as read:", err);
+      }
     }
   };
 
