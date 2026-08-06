@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, SlidersHorizontal, Plus, AlertTriangle, X, Loader2, MapPin, Clock } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
@@ -12,7 +12,14 @@ import { searchComplaints } from "@/lib/api";
 
 export default function SearchPage() {
   const router = useRouter();
-  
+  const searchParams = useSearchParams();
+
+  // Pre-fill query from URL ?q= param (e.g. coming from Navbar search)
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q) setSearchQuery(decodeURIComponent(q));
+  }, [searchParams]);
+
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");

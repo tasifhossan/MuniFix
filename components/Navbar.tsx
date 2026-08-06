@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Search, Bell, Menu, X, ChevronDown, Globe, Mail, Phone, Loader2 } from "lucide-react";
 import NotificationDropdown, { NotificationItem } from "./NotificationDropdown";
 import { fetchNotifications, markNotificationAsRead } from "@/lib/api";
@@ -46,6 +47,16 @@ export default function Navbar({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const router = useRouter();
+
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    setSearchOpen(false);
+    setSearchQuery("");
+    router.push(`/search?q=${encodeURIComponent(q)}`);
+  };
 
 
   // Live notifications from MuniFix backend
@@ -282,19 +293,23 @@ export default function Navbar({
           {/* Search Toggle */}
           <div className="relative">
             {searchOpen ? (
-              <div className="flex items-center bg-gray-50 border border-slate-200 rounded-full px-3 py-1.5 transition-all duration-300 w-64">
+              <form onSubmit={handleSearchSubmit} className="flex items-center bg-gray-50 border border-slate-200 rounded-full px-3 py-1.5 transition-all duration-300 w-64">
                 <input
                   type="text"
-                  placeholder="Search reports or wards..."
+                  placeholder="Search complaints..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
                   className="bg-transparent border-none text-sm outline-none w-full text-gray-700 placeholder-gray-405"
                   autoFocus
                 />
-                <button onClick={() => setSearchOpen(false)} className="text-gray-400 hover:text-gray-600 ml-1">
+                <button type="submit" className="text-[#005c55] hover:text-[#004540] ml-1" aria-label="Submit search">
+                  <Search className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={() => { setSearchOpen(false); setSearchQuery(""); }} className="text-gray-400 hover:text-gray-600 ml-1">
                   <X className="w-4 h-4" />
                 </button>
-              </div>
+              </form>
             ) : (
               <button
                 onClick={() => setSearchOpen(true)}
