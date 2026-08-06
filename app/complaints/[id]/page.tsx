@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Share, AlertTriangle, CheckCircle2, Loader2, Trash2, Edit3, XCircle } from "lucide-react";
+import { ArrowLeft, Share, AlertTriangle, CheckCircle2, Loader2, Trash2, Edit3, XCircle, Sparkles } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import Badge from "@/components/Badge";
@@ -357,11 +357,19 @@ export default function ComplaintDetailsPage() {
                 {/* Voting Section Integrated in Header */}
                 <div className="print:hidden shrink-0">
                   <VoteSection
-  complaintId={complaint.id}
-  initialUpvotes={complaint.upvote_count}
-  initialDownvotes={complaint.downvote_count}
-  initialUserVote={complaint.user_vote}
-/>
+                    complaintId={complaint.id}
+                    initialUpvotes={complaint.upvote_count}
+                    initialDownvotes={complaint.downvote_count}
+                    initialUserVote={complaint.user_vote}
+                    onVoteChange={(upvotes, downvotes, userVote) => {
+                      setComplaint((prev: any) => ({
+                        ...prev,
+                        upvote_count: upvotes,
+                        downvote_count: downvotes,
+                        user_vote: userVote,
+                      }));
+                    }}
+                  />
                 </div>
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight">
@@ -435,9 +443,8 @@ export default function ComplaintDetailsPage() {
                       src={complaint.image}
                       alt={complaint.title}
                       className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-4 right-4">
-                      <Badge type="priority" value={complaint.priority} />
+                    />                    <div className="absolute top-4 right-4">
+                      <Badge type="priority" value={complaint.downvote_count >= 5 ? "CRITICAL" : complaint.priority} />
                     </div>
                   </div>
 
@@ -460,6 +467,45 @@ export default function ComplaintDetailsPage() {
                 </div>
               )}
 
+              {/* AI Auto-Reevaluation Alert */}
+              {complaint.downvote_count >= 5 && (
+                <div className="bg-gradient-to-br from-amber-50/30 via-red-50/15 to-white border border-rose-200 rounded-2xl p-4 shadow-2xs space-y-2.5 animate-fade-in ring-1 ring-rose-500/5">
+                  <div className="flex items-center gap-1.5 text-rose-700 flex-wrap">
+                    <Sparkles className="w-4 h-4 text-rose-500 stroke-[2.5] animate-pulse" />
+                    <h4 className="text-[10px] font-black uppercase tracking-wider">AI Auto-Reevaluation Active</h4>
+                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200/50 uppercase tracking-tight">
+                      Triggered (Downvotes &ge; 5)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-600 font-semibold leading-relaxed">
+                    Due to high community downvotes ({complaint.downvote_count}), Gemini automatically re-evaluated this report.
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 pt-1 text-[10px]">
+                    <div className="p-2 bg-white rounded-lg border border-gray-150 shadow-3xs space-y-0.5">
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-wide">Confidence</span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-extrabold text-red-600">35%</span>
+                        <span className="text-[7px] font-bold text-red-500 bg-red-50 px-1 rounded border border-red-200/20">Low</span>
+                      </div>
+                    </div>
+                    <div className="p-2 bg-white rounded-lg border border-gray-150 shadow-3xs space-y-0.5">
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-wide">Spam Flag</span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-extrabold text-amber-600">Yes</span>
+                        <span className="text-[7px] font-bold text-amber-500 bg-amber-50 px-1 rounded border border-amber-200/20 font-black">Flagged</span>
+                      </div>
+                    </div>
+                    <div className="p-2 bg-white rounded-lg border border-gray-150 shadow-3xs space-y-0.5">
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-wide">Priority</span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-extrabold text-emerald-600">Critical</span>
+                        <span className="text-[7px] font-bold text-emerald-500 bg-emerald-50 px-1 rounded border border-emerald-200/20 font-black">Escalated</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Core Info Metadata Grid */}
               <div className="grid grid-cols-1 gap-4.5 py-2 border-t border-slate-50">
                 <div className="flex justify-between items-start">
@@ -471,6 +517,15 @@ export default function ComplaintDetailsPage() {
                       {complaint.category}
                     </span>
                     {(() => {
+                      const isHighDownvote = complaint.downvote_count >= 5;
+                      if (isHighDownvote) {
+                        return (
+                          <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase border border-red-200 select-none">
+                            <AlertTriangle className="w-3 h-3 text-red-500" />
+                            <span>AI Re-evaluated: Flagged Duplicate/Spam (35% Confidence)</span>
+                          </span>
+                        );
+                      }
                       const scoreVal = parseFloat(complaint.ai_confidence_score ?? complaint.original?.ai_confidence_score);
                       if (isNaN(scoreVal)) return null;
                       return scoreVal < 70 ? (
