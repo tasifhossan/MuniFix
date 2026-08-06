@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { MessageSquare, Send, Trash2, Loader2, Image, X, ThumbsUp, ThumbsDown } from "lucide-react";
-import { getComments, addComment, deleteComment, Comment } from "@/lib/api";
+import { MessageSquare, Send, Trash2, Loader2, Image, X, ThumbsUp, ThumbsDown, Pin, PinOff } from "lucide-react";
+import { getComments, addComment, deleteComment, toggleCommentVote, pinComment, Comment } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSocket } from "@/contexts/SocketContext";
 
 interface CommentSectionProps {
   complaintId: string;
@@ -12,6 +13,7 @@ interface CommentSectionProps {
 export default function CommentSection({ complaintId }: CommentSectionProps) {
   const { user } = useAuth();
   const currentUserId = user?.id;
+  const isAdmin = user?.role === "super_admin" || user?.role === "dept_admin";
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [text, setText] = useState("");
@@ -22,6 +24,8 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  const { socket } = useSocket();
+
   useEffect(() => {
     fetchComments();
     return () => {
@@ -31,6 +35,43 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
       }
     };
   }, [complaintId]);
+
+  useEffect(() => {
+    if (!socket || !complaintId) return;
+
+    const handleNewCommentEvent = (data: any) => {
+      console.log("[Socket] Live new comment received:", data);
+      setComments((prev) => {
+        if (prev.some((c) => c.id === data.id)) {
+          return prev;
+        }
+        return [data, ...prev];
+      });
+    };
+
+    const handleCommentVotedEvent = (data: any) => {
+      console.log("[Socket] Live comment vote received:", data);
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === data.comment_id
+            ? {
+                ...c,
+                upvote_count: data.upvote_count,
+                downvote_count: data.downvote_count,
+              }
+            : c
+        )
+      );
+    };
+
+    socket.on("new_comment", handleNewCommentEvent);
+    socket.on("comment_voted", handleCommentVotedEvent);
+
+    return () => {
+      socket.off("new_comment", handleNewCommentEvent);
+      socket.off("comment_voted", handleCommentVotedEvent);
+    };
+  }, [socket, complaintId]);
 
   const fetchComments = async () => {
     try {
@@ -87,6 +128,10 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
           author_id: user?.id || "",
           author_name: user?.name || "Citizen",
           author_role: user?.role || "citizen",
+          upvote_count: 0,
+          downvote_count: 0,
+          user_vote: null,
+          is_pinned: false
         };
         setComments((prev) => [newCommentObj, ...prev]);
         setText("");
@@ -105,6 +150,48 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
       setComments((prev) => prev.filter((c) => c.id !== commentId));
     } catch (err) {
       console.error("Failed to delete comment:", err);
+    }
+  };
+
+  const handleCommentVoteClick = async (commentId: string, voteType: 1 | -1) => {
+    try {
+      const res = await toggleCommentVote(commentId, voteType);
+      if (res.success) {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === commentId
+              ? {
+                  ...c,
+                  upvote_count: res.data.upvote_count,
+                  downvote_count: res.data.downvote_count,
+                  user_vote: res.data.current_user_vote,
+                }
+              : c
+          )
+        );
+      }
+    } catch (err: any) {
+      console.error("Failed to vote comment:", err);
+    }
+  };
+
+  const handleTogglePin = async (commentId: string, isCurrentlyPinned: boolean) => {
+    try {
+      const res = await pinComment(commentId, !isCurrentlyPinned);
+      if (res.success) {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === commentId
+              ? {
+                  ...c,
+                  is_pinned: res.comment.is_pinned
+                }
+              : c
+          )
+        );
+      }
+    } catch (err: any) {
+      alert(`Failed to pin comment: ${err.message}`);
     }
   };
 
@@ -189,6 +276,7 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
             const authorId = comment.author_id;
             const commentText = comment.content || "";
             const createdAt = comment.created_at || new Date().toISOString();
+            const isPinned = comment.is_pinned === true;
             
             // Check delete authorization (Author or Admin)
             const canDelete =
@@ -197,13 +285,19 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
                 user?.role === "super_admin" ||
                 user?.role === "dept_admin");
 
+            const userVote = comment.user_vote;
+
             return (
               <div
                 key={commentId}
-                className="p-3.5 bg-white rounded-2xl border border-gray-150 shadow-2xs flex justify-between items-start gap-3"
+                className={`p-3.5 rounded-2xl border shadow-2xs flex justify-between items-start gap-3 transition-all duration-300 ${
+                  isPinned 
+                    ? "bg-emerald-50/30 border-emerald-300 ring-1 ring-emerald-300/30" 
+                    : "bg-white border-gray-150"
+                }`}
               >
                 <div className="space-y-1 flex-1">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 text-[9px] font-black flex items-center justify-center border border-gray-200 uppercase">
                       {authorName[0]}
                     </div>
@@ -211,6 +305,12 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
                     <span className="text-[10px] font-semibold text-gray-400">
                       • {new Date(createdAt).toLocaleDateString()}
                     </span>
+                    {isPinned && (
+                      <span className="inline-flex items-center gap-0.5 bg-emerald-100 text-emerald-800 text-[8px] font-black tracking-widest uppercase px-2 py-0.5 rounded-md border border-emerald-200 ml-1.5 animate-scale-up">
+                        <Pin className="w-2.5 h-2.5 fill-current" />
+                        <span>Pinned Solution</span>
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-600 font-semibold leading-relaxed pl-7">
                     {commentText}
@@ -227,35 +327,58 @@ export default function CommentSection({ complaintId }: CommentSectionProps) {
                     </div>
                   )}
 
-                  {/* Non-functional Upvote & Downvote Buttons for comments */}
+                  {/* Functional Upvote & Downvote Buttons for comments */}
                   <div className="flex items-center gap-3 pl-7 pt-2 text-[10px] font-bold text-gray-400">
                     <button
                       type="button"
-                      className="flex items-center gap-1 hover:text-emerald-600 transition-colors cursor-pointer"
+                      onClick={() => handleCommentVoteClick(commentId, 1)}
+                      className={`flex items-center gap-1 transition-colors cursor-pointer select-none ${
+                        userVote === 1 ? "text-emerald-600" : "hover:text-emerald-600"
+                      }`}
                       title="Upvote comment"
                     >
-                      <ThumbsUp className="w-3 h-3 text-slate-400 hover:text-emerald-500" />
-                      <span>Helpful (0)</span>
+                      <ThumbsUp className={`w-3.5 h-3.5 ${userVote === 1 ? "text-emerald-500 fill-current" : "text-slate-400"}`} />
+                      <span>Helpful ({comment.upvote_count || 0})</span>
                     </button>
                     <button
                       type="button"
-                      className="flex items-center gap-1 hover:text-rose-600 transition-colors cursor-pointer"
+                      onClick={() => handleCommentVoteClick(commentId, -1)}
+                      className={`flex items-center gap-1 transition-colors cursor-pointer select-none ${
+                        userVote === -1 ? "text-rose-600" : "hover:text-rose-600"
+                      }`}
                       title="Downvote comment"
                     >
-                      <ThumbsDown className="w-3 h-3 text-slate-400 hover:text-rose-500" />
-                      <span>Not Helpful (0)</span>
+                      <ThumbsDown className={`w-3.5 h-3.5 ${userVote === -1 ? "text-rose-500 fill-current" : "text-slate-400"}`} />
+                      <span>Not Helpful ({comment.downvote_count || 0})</span>
                     </button>
                   </div>
                 </div>
 
-                {canDelete && (
-                  <button
-                    onClick={() => handleDelete(commentId)}
-                    className="text-gray-300 hover:text-red-500 p-1 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
-                  </button>
-                )}
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Pin comment toggle for admin/dept admins */}
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleTogglePin(commentId, isPinned)}
+                      className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                        isPinned 
+                          ? "text-emerald-600 hover:text-red-500 bg-emerald-50" 
+                          : "text-gray-300 hover:text-brand-teal"
+                      }`}
+                      title={isPinned ? "Unpin comment" : "Pin solution"}
+                    >
+                      {isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
+
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(commentId)}
+                      className="text-gray-300 hover:text-red-500 p-1 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

@@ -464,6 +464,10 @@ export interface Comment {
   author_id: string;
   author_name: string;
   author_role: string;
+  upvote_count?: number;
+  downvote_count?: number;
+  user_vote?: 1 | -1 | null;
+  is_pinned?: boolean;
 }
 
 export interface CommentsFetchResponse {
@@ -570,4 +574,191 @@ export const deleteComment = async (
     }
   );
   return handleResponse<{ success: boolean; message?: string }>(response);
+};
+
+export interface Roadblock {
+  id: string;
+  department_id: number | null;
+  title: string;
+  description: string;
+  cause: string;
+  severity: string;
+  is_active: boolean;
+  latitude: string;
+  longitude: string;
+  affected_radius_meters: number;
+  blocked_polyline: [number, number][] | null;
+  created_by: string;
+  created_at: string;
+}
+
+export const fetchRoadblocks = async (): Promise<{
+  success: boolean;
+  count: number;
+  roadblocks: Roadblock[];
+}> => {
+  const response = await fetch(`${API_BASE_URL}/traffic/roadblocks`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+    credentials: "include",
+  });
+  return handleResponse<{ success: boolean; count: number; roadblocks: Roadblock[] }>(response);
+};
+
+export interface ReroutePayload {
+  roadblock_id: string;
+  origin_lat: number;
+  origin_lng: number;
+  destination_lat: number;
+  destination_lng: number;
+  origin_name?: string;
+  destination_name?: string;
+}
+
+export interface RerouteResponse {
+  success: boolean;
+  message: string;
+  data: {
+    optimization_id: string;
+    roadblock: {
+      id: string;
+      title: string;
+      cause: string;
+      severity: string;
+      is_active: boolean;
+    };
+    metrics: {
+      blocked_eta_mins: number;
+      bypass_eta_mins: number;
+      distance_diff_km: number;
+      time_saved_mins: number;
+    };
+    ai_reasoning: string;
+    paths: {
+      blocked_path: [number, number][];
+      bypass_path: [number, number][];
+    };
+  };
+}
+
+export const requestAIReroute = async (
+  payload: ReroutePayload
+): Promise<RerouteResponse> => {
+  const response = await fetch(`${API_BASE_URL}/traffic/reroute`, {
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    credentials: "include",
+  });
+  return handleResponse<RerouteResponse>(response);
+};
+
+export interface CommentVoteResponse {
+  success: boolean;
+  message: string;
+  data: {
+    comment_id: string;
+    current_user_vote: 1 | -1 | null;
+    upvote_count: number;
+    downvote_count: number;
+    score: number;
+  };
+}
+
+export const toggleCommentVote = async (
+  commentId: string,
+  voteType: 1 | -1
+): Promise<CommentVoteResponse> => {
+  const response = await fetch(`${API_BASE_URL}/complain/comments/${commentId}/vote`, {
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ vote_type: voteType }),
+    credentials: "include",
+  });
+  return handleResponse<CommentVoteResponse>(response);
+};
+
+export const pinComment = async (
+  commentId: string,
+  isPinned: boolean
+): Promise<{ success: boolean; message: string; comment: Comment }> => {
+  const response = await fetch(`${API_BASE_URL}/complain/comments/${commentId}/pin`, {
+    method: "PATCH",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ is_pinned: isPinned }),
+    credentials: "include",
+  });
+  return handleResponse<{ success: boolean; message: string; comment: Comment }>(response);
+};
+
+export interface CreateRoadblockPayload {
+  title: string;
+  description: string;
+  cause?: string;
+  severity?: string;
+  latitude: number;
+  longitude: number;
+  affected_radius_meters?: number;
+  blocked_polyline?: [number, number][] | null;
+  department_id?: number | null;
+}
+
+export const createRoadblock = async (
+  payload: CreateRoadblockPayload
+): Promise<{ success: boolean; message: string; roadblock: Roadblock }> => {
+  const response = await fetch(`${API_BASE_URL}/traffic/roadblocks`, {
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    credentials: "include",
+  });
+  return handleResponse<{ success: boolean; message: string; roadblock: Roadblock }>(response);
+};
+
+export const updateRoadblockStatus = async (
+  id: string,
+  isActive: boolean
+): Promise<{ success: boolean; message: string; roadblock: Roadblock }> => {
+  const response = await fetch(`${API_BASE_URL}/traffic/roadblocks/${id}/status`, {
+    method: "PATCH",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ is_active: isActive }),
+    credentials: "include",
+  });
+  return handleResponse<{ success: boolean; message: string; roadblock: Roadblock }>(response);
+};
+
+export const getRoadSnappedPath = async (
+  coords: [number, number][]
+): Promise<[number, number][]> => {
+  if (coords.length < 2) return coords;
+  try {
+    const coordinateString = coords.map(([lat, lng]) => `${lng},${lat}`).join(";");
+    const url = `https://router.project-osrm.org/route/v1/driving/${coordinateString}?geometries=geojson&overview=full`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("OSRM routing failed");
+    const data = await response.json();
+    if (data.routes && data.routes.length > 0) {
+      const geojson = data.routes[0].geometry;
+      return geojson.coordinates.map(([lng, lat]: [number, number]) => [lat, lng] as [number, number]);
+    }
+  } catch (error) {
+    console.error("Error snapping path to roads via OSRM:", error);
+  }
+  return coords;
 };

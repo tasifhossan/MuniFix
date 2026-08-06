@@ -18,7 +18,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Protected route prefixes
-  const protectedPrefixes = ["/dashboard", "/complaints", "/reports", "/settings", "/admin", "/worker"];
+  const protectedPrefixes = ["/dashboard", "/complaints", "/reports", "/settings", "/admin", "/worker", "/traffic"];
   console.log(`[Middleware] Path: ${pathname}, Token exists: ${!!token}`);
   if (token) {
     const decoded = parseJwt(token);
@@ -108,5 +108,6 @@ export const config = {
     "/admin/:path*",
     "/worker/:path*",
     "/superadmin/:path*",
+    "/traffic/:path*",
   ],
 };

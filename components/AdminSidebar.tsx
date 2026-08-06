@@ -13,7 +13,8 @@ import {
   Building,
   Plus,
   BarChart3,
-  ShieldCheck
+  ShieldCheck,
+  Navigation
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -56,7 +57,8 @@ export default function AdminSidebar({
     pathname?.includes("/admin/departments") ? "departments" :
     pathname?.includes("/admin/complaints") ? "complaints" :
     pathname?.includes("/admin/reports") ? "reports" :
-    pathname?.includes("/admin/settings") ? "settings" : "dashboard"
+    pathname?.includes("/admin/settings") ? "settings" :
+    pathname === "/traffic" ? "traffic" : "dashboard"
   );
 
   const { logout, user: authUser } = useAuth();
@@ -97,6 +99,7 @@ export default function AdminSidebar({
     { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className="w-5 h-5" />, href: dashboardHref },
     { id: "permissions", label: "Permissions", icon: <ShieldCheck className="w-5 h-5" />, href: "/admin/permissions" },
     { id: "complaints", label: "Complaints", icon: <AlertTriangle className="w-5 h-5" />, href: "/admin/complaints" },
+    { id: "traffic", label: "Traffic Detours", icon: <Navigation className="w-5 h-5" />, href: "/traffic" },
     { id: "departments", label: "Departments", icon: <Building className="w-5 h-5" />, href: "/admin/departments" },
     { id: "reports", label: "Reports", icon: <BarChart3 className="w-5 h-5" />, href: "/admin/reports" },
   ].filter(item => {

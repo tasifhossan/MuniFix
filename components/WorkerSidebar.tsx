@@ -11,7 +11,8 @@ import {
   HelpCircle, 
   LogOut,
   Landmark,
-  User
+  User,
+  Navigation
 } from "lucide-react";
 
 import { usePathname } from "next/navigation";
@@ -35,12 +36,14 @@ export default function WorkerSidebar({
     pathname === "/worker/reports" ? "reports" :
     pathname === "/worker/profile" ? "profile" :
     pathname === "/worker/settings" ? "settings" :
+    pathname === "/traffic" ? "traffic" :
     pathname?.startsWith("/worker/tasks") ? "complaints" : ""
   );
 
   const menuItems = [
     { id: "dashboard", label: "Dashboard", href: "/worker", icon: <LayoutDashboard className="w-4.5 h-4.5" /> },
     { id: "complaints", label: "Complaints", href: "/worker/complaints", icon: <AlertTriangle className="w-4.5 h-4.5" /> },
+    { id: "traffic", label: "Traffic Detours", href: "/traffic", icon: <Navigation className="w-4.5 h-4.5" /> },
     { id: "reports", label: "Reports", href: "/worker/reports", icon: <BarChart3 className="w-4.5 h-4.5" /> },
     { id: "profile", label: "Profile", href: "/worker/profile", icon: <User className="w-4.5 h-4.5" /> },
     { id: "settings", label: "Settings", href: "/worker/settings", icon: <Settings className="w-4.5 h-4.5" /> },
