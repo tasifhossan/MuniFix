@@ -114,7 +114,7 @@ export default function TrafficMap({
         clickModeRef.current = null;
         // Reset button UI
         const btn = document.getElementById("click-roadblock-btn");
-        if (btn) btn.classList.remove("bg-brand-teal", "text-white");
+        if (btn) btn.classList.remove("bg-red-600", "text-white");
       }
     });
 
