@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, SlidersHorizontal, Plus, AlertTriangle, X, Loader2, MapPin, Clock } from "lucide-react";
@@ -10,7 +10,7 @@ import FilterBar from "@/components/FilterBar";
 import ComplaintCard from "@/components/ComplaintCard";
 import { searchComplaints } from "@/lib/api";
 
-export default function SearchPage() {
+function SearchPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -304,5 +304,20 @@ export default function SearchPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-[#005c55] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-bold text-slate-500">Loading search...</p>
+        </div>
+      </div>
+    }>
+      <SearchPageInner />
+    </Suspense>
   );
 }
