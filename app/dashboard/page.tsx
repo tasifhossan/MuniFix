@@ -391,8 +391,8 @@ export default function CitizenDashboard() {
             </div>
             <div className="flex flex-col gap-1.5 text-center md:text-left">
               <span className="text-gray-900 font-extrabold uppercase tracking-wider text-[10px]">Legal</span>
-              <a href="#privacy" className="hover:text-brand-teal transition-colors">Privacy Policy</a>
-              <a href="#terms" className="hover:text-brand-teal transition-colors">Terms of Service</a>
+              <a href="/privacy" className="hover:text-brand-teal transition-colors">Privacy Policy</a>
+              <a href="/terms" className="hover:text-brand-teal transition-colors">Terms of Service</a>
             </div>
           </div>
         </div>

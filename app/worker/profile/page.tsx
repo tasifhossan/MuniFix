@@ -285,8 +285,8 @@ export default function WorkerProfilePage() {
         <footer className="bg-slate-100/50 border-t border-slate-200/60 py-6 px-6 sm:px-8 flex flex-col md:flex-row justify-between items-center text-xs font-semibold text-slate-500 gap-4 mt-8">
           <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 select-none">
-            <a href="#privacy" className="hover:text-brand-teal transition-colors">Privacy Policy</a>
-            <a href="#terms" className="hover:text-brand-teal transition-colors">Terms of Service</a>
+            <a href="/privacy" className="hover:text-brand-teal transition-colors">Privacy Policy</a>
+            <a href="/terms" className="hover:text-brand-teal transition-colors">Terms of Service</a>
             <a href="https://ccc.gov.bd" target="_blank" rel="noreferrer" className="hover:text-brand-teal transition-colors">
               Chattogram City Corporation
             </a>

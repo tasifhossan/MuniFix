@@ -502,8 +502,8 @@ export default function SystemActivityLogPage() {
         <footer className="bg-transparent py-6 px-8 flex flex-col justify-center items-center text-xs font-semibold text-slate-500 gap-3 mt-8">
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 select-none">
             <a href="#departments" className="hover:text-[#005c55] transition-colors">Departments</a>
-            <a href="#privacy" className="hover:text-[#005c55] transition-colors">Privacy Policy</a>
-            <a href="#terms" className="hover:text-[#005c55] transition-colors">Terms of Service</a>
+            <a href="/privacy" className="hover:text-[#005c55] transition-colors">Privacy Policy</a>
+            <a href="/terms" className="hover:text-[#005c55] transition-colors">Terms of Service</a>
             <a href="https://ccc.gov.bd" target="_blank" rel="noreferrer" className="hover:text-[#005c55] transition-colors">
               Chattogram City Corporation
             </a>

@@ -338,8 +338,8 @@ export default function EditComplaintPage() {
           <span>&copy; {new Date().getFullYear()} MuniFix Ctg. All rights reserved.</span>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <a href="#departments" className="hover:text-[#005c55] transition-colors">Departments</a>
-            <a href="#privacy" className="hover:text-[#005c55] transition-colors">Privacy Policy</a>
-            <a href="#terms" className="hover:text-[#005c55] transition-colors">Terms of Service</a>
+            <a href="/privacy" className="hover:text-[#005c55] transition-colors">Privacy Policy</a>
+            <a href="/terms" className="hover:text-[#005c55] transition-colors">Terms of Service</a>
             <a href="https://ccc.gov.bd" target="_blank" rel="noreferrer" className="hover:text-[#005c55] transition-colors">
               Chattogram City Corporation
             </a>
