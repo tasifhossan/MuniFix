@@ -73,7 +73,11 @@ export default function LoginPage() {
         router.push("/dashboard");
       }
     } catch (err: any) {
-      setError(err.message || "Invalid credentials");
+      if (err.message && err.message.toLowerCase().includes("verified")) {
+        router.push(`/verify?email=${encodeURIComponent(formData.email)}`);
+      } else {
+        setError(err.message || "Invalid credentials");
+      }
     } finally {
       setLoading(false);
     }

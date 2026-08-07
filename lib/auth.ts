@@ -156,3 +156,19 @@ export async function forgotPassword(email: string) {
   }
   return data;
 }
+
+export async function resendOtp(email: string) {
+  const response = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to resend verification OTP");
+  }
+  return data;
+}

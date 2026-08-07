@@ -58,8 +58,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem("user", JSON.stringify(fullUser));
             setAuthCookie(storedToken); // Refresh cookie lifecycle
             setError(null);
-          } catch (profileErr) {
+          } catch (profileErr: any) {
             console.error("Hydration profile fetch failed, trying to refresh token:", profileErr);
+            if (profileErr.message && profileErr.message.toLowerCase().includes("verified")) {
+              router.replace(`/verify?email=${encodeURIComponent(decoded.email)}`);
+              setLoading(false);
+              return;
+            }
             if (storedRefresh) {
               try {
                 const refreshed = await refreshAuthToken(storedRefresh);

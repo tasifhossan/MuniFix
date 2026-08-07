@@ -16,7 +16,7 @@ import ResendTimer from "@/components/ResendTimer";
 import AuthHeader from "@/components/AuthHeader";
 import AuthFooter from "@/components/AuthFooter";
 import AuthBackground from "@/components/AuthBackground";
-import { verifyOtp, forgotPassword } from "@/lib/auth";
+import { verifyOtp, resendOtp } from "@/lib/auth";
 
 export default function VerifyPage() {
   const router = useRouter();
@@ -40,7 +40,7 @@ export default function VerifyPage() {
   const handleResend = async () => {
     try {
       setError(null);
-      await forgotPassword(email);
+      await resendOtp(email);
     } catch (err: any) {
       setError(err.message || "Failed to resend verification code.");
     }
