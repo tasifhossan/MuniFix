@@ -147,6 +147,32 @@ export async function searchComplaints(params: {
   return res.json();
 }
 
+export async function fetchAllComplaints(params: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  category?: string;
+} = {}) {
+  const queryParams = new URLSearchParams();
+  if (params.page) queryParams.append("page", params.page.toString());
+  if (params.limit) queryParams.append("limit", params.limit.toString());
+  if (params.status) queryParams.append("status", params.status);
+  if (params.category) queryParams.append("category", params.category);
+
+  const headers = getHeaders();
+  const res = await fetch(`${API_BASE_URL}/complain/all?${queryParams.toString()}`, {
+    method: "GET",
+    headers: {
+      ...headers,
+    }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch all complaints");
+  }
+  return res.json();
+}
+
 export async function fetchNotifications() {
   const headers = getHeaders();
   const res = await fetch(`${API_BASE_URL}/notifications`, {

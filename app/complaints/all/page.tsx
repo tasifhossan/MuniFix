@@ -11,11 +11,10 @@ import ComplaintCard from "@/components/ComplaintCard";
 import EmergencyCallout from "@/components/EmergencyCallout";
 import Pagination from "@/components/Pagination";
 import { Complaint } from "@/lib/mockData";
-import { searchComplaints, createComplaint } from "@/lib/api";
+import { fetchAllComplaints, createComplaint } from "@/lib/api";
 
-export default function ComplaintsPage() {
+export default function AllComplaintsPage() {
   const router = useRouter();
-  const [activeSidebarTab, setActiveSidebarTab] = useState("complaints");
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,7 +54,7 @@ export default function ComplaintsPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch search/filter results whenever debounced query or filters change
+  // Fetch all complaints from backend
   useEffect(() => {
     async function loadData() {
       try {
@@ -63,16 +62,15 @@ export default function ComplaintsPage() {
         setError(null);
 
         // Build dynamic parameters (only include non-empty values)
-        const params: any = {};
-        if (debouncedSearchQuery.trim() !== "") params.q = debouncedSearchQuery;
+        // Fetch up to 1000 items to perform accurate client-side searching and sorting
+        const params: any = { limit: 1000 };
         if (filters.category) params.category = filters.category;
-        if (filters.priority) params.priority = filters.priority;
         if (filters.status) params.status = filters.status;
-        if (filters.date) params.date = filters.date;
 
-        const data = await searchComplaints(params);
+        const data = await fetchAllComplaints(params);
         if (data.success) {
-          const mapped = data.complains.map((c: any) => ({
+          const rawComplaints = data.complaints || data.complains || [];
+          const mapped = rawComplaints.map((c: any) => ({
             id: c.id,
             title: c.category + " Issue - " + (c.citizen_name || "Citizen Report"),
             description: c.description,
@@ -100,11 +98,52 @@ export default function ComplaintsPage() {
       }
     }
     loadData();
-  }, [debouncedSearchQuery, filters]);
+  }, [filters.category, filters.status]);
 
-  // Sorting logic
-  const sortedComplaints = useMemo(() => {
-    const list = [...complaints];
+  // Client-side filtering & sorting logic
+  const filteredAndSortedComplaints = useMemo(() => {
+    let list = [...complaints];
+    
+    // Client-side text search (matches description, reporter, or category)
+    if (debouncedSearchQuery.trim() !== "") {
+      const q = debouncedSearchQuery.toLowerCase();
+      list = list.filter(c => 
+        (c.description && c.description.toLowerCase().includes(q)) ||
+        (c.reporter && c.reporter.toLowerCase().includes(q)) ||
+        (c.category && c.category.toLowerCase().includes(q))
+      );
+    }
+
+    // Client-side date filter
+    if (filters.date) {
+      const now = new Date();
+      list = list.filter(c => {
+        const cDate = new Date(c.date);
+        if (filters.date === "today") {
+          return cDate.toDateString() === now.toDateString();
+        } else if (filters.date === "yesterday") {
+          const yesterday = new Date();
+          yesterday.setDate(now.getDate() - 1);
+          return cDate.toDateString() === yesterday.toDateString();
+        } else if (filters.date === "week") {
+          const weekAgo = new Date();
+          weekAgo.setDate(now.getDate() - 7);
+          return cDate >= weekAgo;
+        } else if (filters.date === "month") {
+          const monthAgo = new Date();
+          monthAgo.setDate(now.getDate() - 30);
+          return cDate >= monthAgo;
+        }
+        return true;
+      });
+    }
+
+    // Client-side priority filter (as backup/addition)
+    if (filters.priority) {
+      list = list.filter(c => c.priority.toLowerCase() === filters.priority.toLowerCase());
+    }
+
+    // Sorting
     if (sortBy === "newest") {
       return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     } else if (sortBy === "oldest") {
@@ -113,15 +152,15 @@ export default function ComplaintsPage() {
       return list.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
     }
     return list;
-  }, [complaints, sortBy]);
+  }, [complaints, debouncedSearchQuery, filters.date, filters.priority, sortBy]);
 
   // Pagination logic
   const paginatedComplaints = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return sortedComplaints.slice(start, start + itemsPerPage);
-  }, [sortedComplaints, currentPage]);
+    return filteredAndSortedComplaints.slice(start, start + itemsPerPage);
+  }, [filteredAndSortedComplaints, currentPage]);
 
-  const totalPages = Math.ceil(sortedComplaints.length / itemsPerPage) || 1;
+  const totalPages = Math.ceil(filteredAndSortedComplaints.length / itemsPerPage) || 1;
 
   // Handlers
   const handleSearch = (query: string) => {
@@ -170,7 +209,7 @@ export default function ComplaintsPage() {
           <div className="flex items-center justify-between pb-2">
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-                My Complaints
+                All Complaints
               </h1>
             </div>
             
@@ -194,7 +233,7 @@ export default function ComplaintsPage() {
           {/* Complaints Header (Count + Sort) */}
           <div className="flex items-center justify-between pt-4 border-t border-gray-200/60">
             <h2 className="text-lg font-black text-gray-800 tracking-tight">
-              Search Results ({sortedComplaints.length})
+              Search Results ({filteredAndSortedComplaints.length})
             </h2>
 
             {/* Sort Dropdown */}
@@ -311,11 +350,9 @@ export default function ComplaintsPage() {
               ))}
 
               {/* Fallback for subsequent pages or filtered lists (render as medium list) */}
-              {(currentPage > 1 || sortedComplaints.length !== complaints.length) && 
-                sortedComplaints.map((item, idx) => {
-                  // If page size is filtered, just render them in a clean stacked list
-                  // unless it's the first item which we can still show as large or medium
-                  const isFirst = idx === 0;
+              {(currentPage > 1 || filteredAndSortedComplaints.length !== complaints.length) && 
+                paginatedComplaints.map((item, idx) => {
+                  const isFirst = idx === 0 && currentPage === 1;
                   return (
                     <div key={item.id} className="col-span-6">
                       <ComplaintCard
@@ -346,7 +383,7 @@ export default function ComplaintsPage() {
           )}
 
           {/* Pagination */}
-          {sortedComplaints.length > itemsPerPage && (
+          {filteredAndSortedComplaints.length > itemsPerPage && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -384,8 +421,8 @@ export default function ComplaintsPage() {
                     fd.append("latitude", "22.3569");
                     fd.append("longitude", "91.8123");
                     fd.append("is_emergency", "true");
-                    fd.append("category", "Other"); // default category
-                    fd.append("priority", "critical"); // default priority
+                    fd.append("category", "Other"); 
+                    fd.append("priority", "critical"); 
                     fd.append("locationInput", emergencyLocation.trim());
 
                     const res = await createComplaint(fd);

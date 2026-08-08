@@ -10,7 +10,8 @@ import {
   Settings,
   HelpCircle,
   LogOut,
-  Navigation
+  Navigation,
+  Globe
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import WorkerSidebar from "./WorkerSidebar";
@@ -38,7 +39,8 @@ export default function Sidebar({ onItemSelect }: SidebarProps) {
 
   const mainNavItems = [
     { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { id: "complaints", label: "Complaints", href: "/complaints", icon: MessageSquareWarning },
+    { id: "complaints", label: "My Complaints", href: "/complaints", icon: MessageSquareWarning },
+    { id: "all-complaints", label: "All Complaints", href: "/complaints/all", icon: Globe },
     { id: "routing", label: "AI Traffic Detour", href: "/routing", icon: Navigation },
     { id: "reports", label: "Reports", href: "/reports", icon: BarChart3 },
     { id: "settings", label: "Settings", href: "/settings", icon: Settings },
@@ -52,7 +54,11 @@ export default function Sidebar({ onItemSelect }: SidebarProps) {
   const renderLink = (item: { id: string; label: string; href: string; icon: React.ComponentType<any> }) => {
     const Icon = item.icon;
     // Highlight if pathname matches exactly, or starts with the href (excluding root /)
-    const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+    const isActive = item.href === "/" 
+      ? pathname === "/" 
+      : item.href === "/complaints" 
+        ? pathname === "/complaints" || (pathname.startsWith("/complaints/") && !pathname.startsWith("/complaints/all"))
+        : pathname.startsWith(item.href);
 
     const handleClick = async (e: React.MouseEvent) => {
       if (item.id === "logout") {
