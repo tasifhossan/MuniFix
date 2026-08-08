@@ -25,7 +25,7 @@ export default function DashboardFooter() {
             <p className="font-bold text-slate-700 tracking-wider uppercase">Platform</p>
             <div className="flex flex-col space-y-2 text-slate-500 font-semibold">
               <a href="/#departments" className="hover:text-brand-teal transition-colors">Departments</a>
-              <a href="/#how-it-works" className="hover:text-brand-teal transition-colors">How it Works</a>
+              <Link href="/how-it-works" className="hover:text-brand-teal transition-colors">How it Works</Link>
             </div>
           </div>
 

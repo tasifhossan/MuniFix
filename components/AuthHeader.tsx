@@ -21,10 +21,10 @@ export default function AuthHeader({ showNav = true }: AuthHeaderProps) {
       </Link>
       {showNav && (
         <nav className="flex space-x-6 text-sm font-semibold text-gray-500">
-          <Link href="/#how-it-works" className="hover:text-brand-teal transition-colors">
+          <Link href="/how-it-works" className="hover:text-brand-teal transition-colors">
             How it Works
           </Link>
-          <Link href="/#about" className="hover:text-brand-teal transition-colors">
+          <Link href="/about" className="hover:text-brand-teal transition-colors">
             About
           </Link>
         </nav>

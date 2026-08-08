@@ -253,12 +253,12 @@ export default function Navbar({
           )}
           {(user || isDashboard
             ? [
-                { id: "how-it-works", label: "How it Works", href: "/#how-it-works" },
-                { id: "about", label: "About", href: "/#about" },
+                { id: "how-it-works", label: "How it Works", href: "/how-it-works" },
+                { id: "about", label: "About", href: "/about" },
               ]
             : [
-                { id: "how-it-works", label: "How it Works", href: "#how-it-works" },
-                { id: "about", label: "About", href: "#about" },
+                { id: "how-it-works", label: "How it Works", href: "/how-it-works" },
+                { id: "about", label: "About", href: "/about" },
                 { id: "contact", label: "Contact", href: "#contact" },
               ]
           ).map((item) => {
@@ -464,12 +464,12 @@ export default function Navbar({
             )}
             {(user || isDashboard
               ? [
-                  { id: "how-it-works", label: "How it Works", href: "/#how-it-works" },
-                  { id: "about", label: "About", href: "/#about" },
+                  { id: "how-it-works", label: "How it Works", href: "/how-it-works" },
+                  { id: "about", label: "About", href: "/about" },
                 ]
               : [
-                  { id: "how-it-works", label: "How it Works", href: "#how-it-works" },
-                  { id: "about", label: "About", href: "#about" },
+                  { id: "how-it-works", label: "How it Works", href: "/how-it-works" },
+                  { id: "about", label: "About", href: "/about" },
                   { id: "contact", label: "Contact", href: "#contact" },
                 ]
             ).map((item) => (

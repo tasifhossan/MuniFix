@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Search, Bell, SlidersHorizontal } from "lucide-react";
 
 interface AdminHeaderProps {
@@ -32,8 +33,8 @@ export default function AdminHeader({
 
         {/* Center Subnavigation Links */}
         <div className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-500">
-          <a href="#how-it-works" className="hover:text-[#005c55] transition-colors">How it Works</a>
-          <a href="#about" className="hover:text-[#005c55] transition-colors">About</a>
+          <Link href="/how-it-works" className="hover:text-[#005c55] transition-colors">How it Works</Link>
+          <Link href="/about" className="hover:text-[#005c55] transition-colors">About</Link>
           <a href="#contact" className="hover:text-[#005c55] transition-colors">Contact</a>
         </div>
 
