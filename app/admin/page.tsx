@@ -20,8 +20,16 @@ import AdminSidebar from "@/components/AdminSidebar";
 import AnalyticsStatsCard from "@/components/AnalyticsStatsCard";
 import ComplaintsChart from "@/components/ComplaintsChart";
 import StatusDistribution from "@/components/StatusDistribution";
+import dynamic from "next/dynamic";
 import CriticalActivityLog from "@/components/CriticalActivityLog";
-import IncidentHotspots from "@/components/IncidentHotspots";
+const IncidentHotspots = dynamic(() => import("@/components/IncidentHotspots"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-56 bg-[#111827] rounded-2xl animate-pulse flex items-center justify-center border border-slate-800">
+      <p className="text-gray-400 text-xs font-bold animate-pulse">Loading Incident Hotspots Map...</p>
+    </div>
+  )
+});
 import {
   fetchMyProfile,
   fetchAdminComplaints,
@@ -238,7 +246,7 @@ export default function AdminDashboardPage() {
                   <CriticalActivityLog />
                 </div>
                 <div className="lg:col-span-2 flex">
-                  <IncidentHotspots />
+                  <IncidentHotspots complaints={complaints} />
                 </div>
               </div>
             )}
